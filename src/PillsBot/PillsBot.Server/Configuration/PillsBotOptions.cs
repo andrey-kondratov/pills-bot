@@ -11,7 +11,7 @@ namespace PillsBot.Server.Configuration
     public class ConnectionOptions
     {
         public string ApiToken { get; set; }
-        public int ChatId { get; set; }
+        public long ChatId { get; set; }
     }
 
     public class ReminderOptions
