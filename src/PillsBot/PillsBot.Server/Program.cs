@@ -50,7 +50,6 @@ namespace PillsBot.Server
         public static IWebHostBuilder CreateHostBuilder(string[] args)
         {
             return WebHost.CreateDefaultBuilder<Startup>(args)
-                .UseKestrel(options => options.ListenAnyIP(Env.Port))
                 .UseSerilog();
         }
     }

@@ -56,5 +56,15 @@ namespace PillsBot.Server
 
             return Task.CompletedTask;
         }
+
+        public async Task Notify(string message, CancellationToken cancellationToken = default)
+        {
+            ChatId chatId = _options.Connection.ChatId;
+
+            _logger.LogInformation("Sending message: {Message} to chat {ChatId}", message, chatId);
+            await _client.SendTextMessageAsync(chatId, message, ParseMode.Default, cancellationToken: cancellationToken);
+
+            _logger.LogInformation("Message sent.");
+        }
     }
 }
