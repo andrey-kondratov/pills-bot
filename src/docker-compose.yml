@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  web:
+    image: pills-bot:latest
+    build:
+      context: .
+      dockerfile: docker/amd64/Dockerfile
