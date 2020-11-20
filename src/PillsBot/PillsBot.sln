@@ -5,6 +5,12 @@ VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PillsBot.Server", "PillsBot.Server\PillsBot.Server.csproj", "{C7DE8474-4143-45D0-92A0-D408A91A9BB5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9F79F254-EB50-4990-86F1-5A704C642D2A}"
+	ProjectSection(SolutionItems) = preProject
+		..\docker-compose.arm32.yml = ..\docker-compose.arm32.yml
+		..\docker-compose.yml = ..\docker-compose.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
