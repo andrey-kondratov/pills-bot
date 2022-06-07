@@ -34,7 +34,7 @@ namespace PillsBot.Server
                 _logger.LogError(EventIds.BotStartupFailed, exception, "Failed to start messenger");
                 return;
             }
-            
+
             _logger.LogInformation("Bot started.");
 
             DateTime begins = _options.Reminder.Begins;
@@ -56,7 +56,7 @@ namespace PillsBot.Server
 
                 await Task.Delay(1000, stoppingToken);
             }
-            
+
             _logger.LogInformation("Stopping bot");
 
             try

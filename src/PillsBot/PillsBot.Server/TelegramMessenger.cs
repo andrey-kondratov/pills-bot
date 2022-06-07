@@ -62,13 +62,13 @@ namespace PillsBot.Server
 
         public async Task Notify(string message, CancellationToken cancellationToken = default)
         {
-            ChatId chatId = _options.Connection.ChatId ?? 
+            ChatId chatId = _options.Connection.ChatId ??
                 throw new InvalidOperationException("Chat id not configured");
 
             IReplyMarkup replyMarkup = GetReplyMarkup();
 
             _logger.LogInformation("Sending message: {Message} to chat {ChatId}", message, chatId);
-            await _client.SendTextMessageAsync(chatId, message, ParseMode.Default, 
+            await _client.SendTextMessageAsync(chatId, message, ParseMode.Default,
                 cancellationToken: cancellationToken, replyMarkup: replyMarkup);
 
             _logger.LogInformation("Message sent.");
