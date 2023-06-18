@@ -3,7 +3,7 @@
 var target = Argument("target", "Default");
 var tag = Argument("tag", "latest");
 var image = Argument("image", "pills-bot");
-var registry = Argument("registry", "andeadlier");
+var registry = Argument("registry", "andreikondratov");
 
 // General
 Task("Default")
@@ -17,7 +17,7 @@ var dockerComposeBuildSettings = new DockerComposeBuildSettings
 
 Task("Build")
     .IsDependentOn("BuildAmd64")
-    .IsDependentOn("BuildArm32");
+    .IsDependentOn("BuildArm64");
 
 Task("BuildAmd64")
     .Does(() => 
@@ -30,12 +30,12 @@ Task("BuildAmd64")
         DockerComposeBuild(settings);
     });
 
-Task("BuildArm32")
+Task("BuildArm64")
     .Does(() => 
     {
         var settings = new DockerComposeBuildSettings
         {
-            Files = new [] {"./src/docker-compose.arm32.yml"}
+            Files = new [] {"./src/docker-compose.arm64.yml"}
         };
 
         DockerComposeBuild(settings);
@@ -44,28 +44,28 @@ Task("BuildArm32")
 // Tag
 string amd64ImageReference = $"{image}:{tag}";
 string amd64RegistryReference = $"{registry}/{image}:{tag}";
-string arm32ImageReference = $"{image}:{tag}-arm32v7";
-string arm32RegistryReference = $"{registry}/{image}:{tag}-arm32v7";
+string arm64ImageReference = $"{image}:{tag}-arm64v8";
+string arm64RegistryReference = $"{registry}/{image}:{tag}-arm64v8";
 
 Task("TagAmd64")
     .IsDependentOn("BuildAmd64")
     .Does(() => DockerTag(amd64ImageReference, amd64RegistryReference));
 
-Task("TagArm32")
-    .IsDependentOn("BuildArm32")
-    .Does(() => DockerTag(arm32ImageReference, arm32RegistryReference));
+Task("TagArm64")
+    .IsDependentOn("BuildArm64")
+    .Does(() => DockerTag(arm64ImageReference, arm64RegistryReference));
 
 // Push
 Task("Push")
     .IsDependentOn("PushAmd64")
-    .IsDependentOn("PushArm32");
+    .IsDependentOn("PushArm64");
 
 Task("PushAmd64")
     .IsDependentOn("TagAmd64")
     .Does(() => DockerPush(amd64RegistryReference));
 
-Task("PushArm32")
-    .IsDependentOn("TagArm32")
-    .Does(() => DockerPush(arm32RegistryReference));
+Task("PushArm64")
+    .IsDependentOn("TagArm64")
+    .Does(() => DockerPush(arm64RegistryReference));
 
 RunTarget(target);
