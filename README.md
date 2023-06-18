@@ -1,3 +1,5 @@
+[![Docker Pulls](https://img.shields.io/docker/pulls/andreikondratov/pills-bot)](https://hub.docker.com/r/andreikondratov/pills-bot)
+
 # Pills bot
 
 Create a `docker-compose.yml`:
