@@ -13,7 +13,7 @@ services:
     environment:
       PILLSBOT__CONNECTION__APITOKEN: "" # your Telegram bot's API token
       PILLSBOT__CONNECTION__CHATID: "" # your Telegram group chat ID
-      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00" # the begin date and time (local)
+      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00" # the begin date and time (UTC)
     restart: unless-stopped
 ```
 
@@ -40,7 +40,7 @@ Environment variables are listed below:
 |---|---|---|---|
 |PILLSBOT__CONNECTION__APITOKEN|Yes||The API token for your bot in Telegram|
 |PILLSBOT__CONNECTION__CHATID|No||Ignore messages from chats or users other than this one|
-|PILLSBOT__REMINDER__BEGINS|No|Start + 5 sec|The local date and time after which to schedule reminders|
+|PILLSBOT__REMINDER__BEGINS|No|Start + 5 sec|The UTC date and time after which to schedule reminders|
 |PILLSBOT__REMINDER__INTERVAL|No|12 hours|The interval after which a new reminder will be sent|
 |PILLSBOT__REMINDER__MESSAGE|No|Pills time!|The default message to send|
 |PILLSBOT__AI__ENABLED|No|False|Enabled AI features (requires a model in Azure OpenAI)|
