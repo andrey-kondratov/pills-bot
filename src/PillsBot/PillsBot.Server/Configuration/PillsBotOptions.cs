@@ -5,7 +5,7 @@ namespace PillsBot.Server.Configuration
 {
     public class PillsBotOptions
     {
-        public ConnectionOptions Connection { get; set; }
+        public ConnectionOptions Connection { get; set; } = new();
         public ReminderOptions Reminder { get; set; } = new();
         public AIOptions AI { get; set; } = new();
     }
