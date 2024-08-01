@@ -2,39 +2,51 @@
 
 # Pills bot
 
+If you have a cat that needs pills given to him on a regular schedule, and you sometimes forget - this Telegram bot will remind you.
+
+## Prerequisites
+
+- a Telegram bot registered with an API key
+- a VM, a PC or a Raspberry Pi 4 with docker runtime installed
+- (optional) an Azure OpenAI `gpt-4o` or similar language model (approx. 200 tokens per reminder or $1 per year)
+
+## Configuration
+
 Create a `docker-compose.yml`:
 
 ```yml
-version: "3"
-
 services:
   bot:
-    image: andreikondratov/pills-bot:latest # or latest-arm64v8
+    image: andreikondratov/pills-bot:latest # or latest-arm64v8 if running on Raspberry Pi
     environment:
-      PILLSBOT__CONNECTION__APITOKEN: "" # your Telegram bot's API token
-      PILLSBOT__CONNECTION__CHATID: "" # your Telegram group chat ID
-      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00" # the begin date and time (UTC)
+      PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
+      PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID" # send the bot a message to see it in the logs
+      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00"
+      PILLSBOT__AI__ENABLED: true
+      PILLSBOT__AI__PETNAMES: Whisker McFluffington
+      PILLSBOT__AI__PETGENDER: male
+      PILLSBOT__AI__AZURE__ENDPOINT: <YOUR AZURE OPENAI ENDPOINT>
+      PILLSBOT__AI__AZURE__KEY: <YOUR API KEY TO IT>
+      PILLSBOT__AI__AZURE__DEPLOYMENTNAME: gpt-4o
     restart: unless-stopped
 ```
 
-Run `docker compose up -d` on your server and see in the logs:
+If you prefer not to use Azure OpenAI and simply send a static message:
 
-```sh
-$ docker compose logs
-pills-bot  | [17:17:47 INF] Starting host
-pills-bot  | [17:17:48 INF] Starting bot...
-pills-bot  | [17:17:48 INF] Creating the client...
-pills-bot  | [17:17:48 INF] Application started. Press Ctrl+C to shut down.
-pills-bot  | [17:17:48 INF] Hosting environment: Production
-pills-bot  | [17:17:48 INF] Content root path: /app
-pills-bot  | [17:17:49 INF] Started receiving updates.
-pills-bot  | [17:17:49 INF] Bot started.
-pills-bot  | [17:17:49 INF] Next reminder comes off at 06/18/2023 20:00:00
+```yml
+services:
+  bot:
+    image: andreikondratov/pills-bot:latest
+    environment:
+      PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
+      PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID"
+      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00"
+    restart: unless-stopped
 ```
 
-## Environment variables
+## Configuration
 
-Environment variables are listed below:
+All the configuration parameters are listed below. 
 
 |Environment variable|Required|Default value|Description|
 |---|---|---|---|
