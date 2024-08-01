@@ -6,14 +6,9 @@ using Telegram.Bot;
 
 namespace PillsBot.Server
 {
-    public class TelegramClientFactory : ITelegramClientFactory
+    public class TelegramClientFactory(ILogger<TelegramClientFactory> logger) : ITelegramClientFactory
     {
-        private readonly ILogger<TelegramClientFactory> _logger;
-
-        public TelegramClientFactory(ILogger<TelegramClientFactory> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<TelegramClientFactory> _logger = logger;
 
         public async Task<ITelegramBotClient> Create(string token, CancellationToken cancellationToken = default)
         {

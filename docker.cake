@@ -1,4 +1,4 @@
-#addin nuget:?package=Cake.Docker&version=0.11.0
+#addin nuget:?package=Cake.Docker&version=1.3.0
 
 var target = Argument("target", "Default");
 var tag = Argument("tag", "latest");

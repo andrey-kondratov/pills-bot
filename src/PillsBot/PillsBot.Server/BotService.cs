@@ -8,18 +8,12 @@ using PillsBot.Server.Configuration;
 
 namespace PillsBot.Server
 {
-    internal class BotService : BackgroundService
+    internal class BotService(ILogger<BotService> logger, IMessenger messenger, 
+        IOptions<PillsBotOptions> options) : BackgroundService
     {
-        private readonly ILogger<BotService> _logger;
-        private readonly IMessenger _messenger;
-        private readonly PillsBotOptions _options;
-
-        public BotService(ILogger<BotService> logger, IMessenger messenger, IOptions<PillsBotOptions> options)
-        {
-            _logger = logger;
-            _messenger = messenger;
-            _options = options.Value;
-        }
+        private readonly ILogger<BotService> _logger = logger;
+        private readonly IMessenger _messenger = messenger;
+        private readonly PillsBotOptions _options = options.Value;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -46,7 +40,7 @@ namespace PillsBot.Server
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (next <= DateTime.UtcNow)
+                if (next <= DateTime.Now)
                 {
                     await _messenger.Notify(message, stoppingToken);
 
@@ -57,30 +51,18 @@ namespace PillsBot.Server
                 await Task.Delay(1000, stoppingToken);
             }
 
-            _logger.LogInformation("Stopping bot");
-
-            try
-            {
-                await _messenger.Stop(stoppingToken);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(EventIds.BotShutdownFailed, exception, "Failed to stop the messenger");
-                return;
-            }
-
             _logger.LogInformation("Bot stopped.");
         }
 
-        private DateTime GetNext(DateTime begins, TimeSpan interval)
+        private static DateTime GetNext(DateTime begins, TimeSpan interval)
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.Now;
             if (now < begins)
             {
                 return begins;
             }
 
-            var current = begins;
+            DateTime current = begins;
             while (current < now)
             {
                 current = current.Add(interval);
