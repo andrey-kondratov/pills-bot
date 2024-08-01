@@ -77,7 +77,7 @@ namespace PillsBot.Server
 
         private async Task OnCallbackQuery(CallbackQuery query, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("A callback query received: {@CallbackQuery}", query);
+            _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
 
             long chatId = query.Message.Chat.Id;
             if (chatId != _options.Connection.ChatId)

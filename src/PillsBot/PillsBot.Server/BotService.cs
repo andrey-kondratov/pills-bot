@@ -8,12 +8,14 @@ using PillsBot.Server.Configuration;
 
 namespace PillsBot.Server
 {
-    internal class BotService(ILogger<BotService> logger, IMessenger messenger, 
-        IOptions<PillsBotOptions> options) : BackgroundService
+    internal class BotService(ILogger<BotService> logger, IMessenger messenger,
+        IOptions<PillsBotOptions> options, IMessageProvider messageProvider)
+        : BackgroundService
     {
         private readonly ILogger<BotService> _logger = logger;
         private readonly IMessenger _messenger = messenger;
         private readonly PillsBotOptions _options = options.Value;
+        private readonly IMessageProvider _messageProvider = messageProvider;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -33,7 +35,7 @@ namespace PillsBot.Server
 
             DateTime begins = _options.Reminder.Begins;
             TimeSpan interval = _options.Reminder.Interval;
-            string message = _options.Reminder.Message;
+            string message = await _messageProvider.GetMessage(stoppingToken);
 
             DateTime next = GetNext(begins, interval);
             _logger.LogInformation("Next reminder comes off at {Next}", next);
