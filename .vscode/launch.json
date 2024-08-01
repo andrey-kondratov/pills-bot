@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/src/PillsBot/PillsBot.Server/bin/Debug/netcoreapp3.1/bot.dll",
+            "program": "${workspaceFolder}/src/PillsBot/PillsBot.Server/bin/Debug/net8.0/bot.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/PillsBot/PillsBot.Server",
             "stopAtEntry": false,

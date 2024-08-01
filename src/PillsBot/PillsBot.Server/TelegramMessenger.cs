@@ -1,63 +1,46 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PillsBot.Server.Configuration;
 using Telegram.Bot;
-using Telegram.Bot.Args;
+using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace PillsBot.Server
 {
-    internal class TelegramMessenger : IMessenger
+    internal class TelegramMessenger(ILogger<TelegramMessenger> logger,
+        ITelegramClientFactory clientFactory, IOptions<PillsBotOptions> options)
+        : IMessenger, IUpdateHandler
     {
-        private static readonly UpdateType[] AllowedUpdates = { UpdateType.Message, UpdateType.CallbackQuery };
-
-        private readonly ILogger<TelegramMessenger> _logger;
-        private readonly PillsBotOptions _options;
-        private readonly ITelegramClientFactory _clientFactory;
-        private ITelegramBotClient _client;
-        private CancellationToken _cancellationToken;
-
-        public TelegramMessenger(ILogger<TelegramMessenger> logger, ITelegramClientFactory clientFactory, IOptions<PillsBotOptions> options)
+        private static readonly ReceiverOptions ReceiverOptions = new()
         {
-            _logger = logger;
-            _options = options.Value;
-            _clientFactory = clientFactory;
-        }
+            AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
+        };
+
+        private readonly ILogger<TelegramMessenger> _logger = logger;
+        private readonly PillsBotOptions _options = options.Value;
+        private readonly ITelegramClientFactory _clientFactory = clientFactory;
+        private ITelegramBotClient _client;
 
         public async Task Start(CancellationToken cancellationToken = default)
         {
-            _client = await _clientFactory.Create(_options.Connection.ApiToken);
+            _client = await _clientFactory.Create(_options.Connection.ApiToken, cancellationToken);
 
             // webhooks not supported
             WebhookInfo webhookInfo = await _client.GetWebhookInfoAsync(cancellationToken);
             if (!string.IsNullOrEmpty(webhookInfo.Url))
             {
                 _logger.LogWarning("A webhook is set up on the server. Deleting...");
-                await _client.DeleteWebhookAsync(cancellationToken);
+                await _client.DeleteWebhookAsync(true, cancellationToken);
             }
 
-            _client.OnMessage += OnClientMessage;
-            _client.OnCallbackQuery += OnCallbackQuery;
-            _client.StartReceiving(AllowedUpdates, cancellationToken);
+            _client.StartReceiving(this, ReceiverOptions, cancellationToken);
             _logger.LogInformation("Started receiving updates.");
-
-            _cancellationToken = cancellationToken;
-        }
-
-        public Task Stop(CancellationToken cancellationToken = default)
-        {
-            _client.StopReceiving();
-            _client.OnMessage -= OnClientMessage;
-            _client.OnCallbackQuery -= OnCallbackQuery;
-
-            _logger.LogInformation("Stopped receiving updates");
-
-            return Task.CompletedTask;
         }
 
         public async Task Notify(string message, CancellationToken cancellationToken = default)
@@ -68,45 +51,58 @@ namespace PillsBot.Server
             IReplyMarkup replyMarkup = GetReplyMarkup();
 
             _logger.LogInformation("Sending message: {Message} to chat {ChatId}", message, chatId);
-            await _client.SendTextMessageAsync(chatId, message, ParseMode.Default,
-                cancellationToken: cancellationToken, replyMarkup: replyMarkup);
+            await _client.SendTextMessageAsync(chatId, message, replyMarkup: replyMarkup,
+                cancellationToken: cancellationToken);
 
             _logger.LogInformation("Message sent.");
         }
 
-        private void OnCallbackQuery(object sender, CallbackQueryEventArgs e)
+        public Task HandleUpdateAsync(ITelegramBotClient botClient, Update update,
+            CancellationToken cancellationToken)
         {
-            _logger.LogInformation("A callback query received: {@CallbackQuery}", e.CallbackQuery);
+            return update.Type switch
+            {
+                UpdateType.CallbackQuery => OnCallbackQuery(update.CallbackQuery, cancellationToken),
+                UpdateType.Message => OnClientMessage(update.Message),
+                _ => throw new InvalidEnumArgumentException("UpdateType", (int)update.Type, typeof(UpdateType))
+            };
+        }
 
-            var chatId = e.CallbackQuery.Message.Chat.Id;
+        public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogError(exception, "Polling error.");
+            return Task.CompletedTask;
+        }
+
+        private async Task OnCallbackQuery(CallbackQuery query, CancellationToken cancellationToken)
+        {
+            _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
+
+            long chatId = query.Message.Chat.Id;
             if (chatId != _options.Connection.ChatId)
             {
-                _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", e.CallbackQuery);
+                _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", query);
                 return;
             }
 
             // fire message removal
-            _client.DeleteMessageAsync(chatId, e.CallbackQuery.Message.MessageId, _cancellationToken);
+            await _client.DeleteMessageAsync(chatId, query.Message.MessageId, cancellationToken);
 
             // fire callback
-            _client.AnswerCallbackQueryAsync(e.CallbackQuery.Id, "🐱", cancellationToken: _cancellationToken);
+            await _client.AnswerCallbackQueryAsync(query.Id, "🐱", cancellationToken: cancellationToken);
         }
 
-        private void OnClientMessage(object sender, MessageEventArgs e)
+        private Task OnClientMessage(Message message)
         {
-            _logger.LogInformation("A message received: {@Message}", e.Message);
+            _logger.LogInformation("A message received: {@Message}", message);
+            return Task.CompletedTask;
         }
 
-        private IReplyMarkup GetReplyMarkup()
+        private static InlineKeyboardMarkup GetReplyMarkup()
         {
-            var inlineKeyboardButton = new InlineKeyboardButton
-            {
-                CallbackData = "roger",
-                Text = "Eaten!"
-            };
-
+            var inlineKeyboardButton = InlineKeyboardButton.WithCallbackData("Eaten!", "roger");
             var result = new InlineKeyboardMarkup(inlineKeyboardButton);
-
             return result;
         }
     }
