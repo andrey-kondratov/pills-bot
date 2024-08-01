@@ -13,7 +13,7 @@ services:
     environment:
       PILLSBOT__CONNECTION__APITOKEN: "" # your Telegram bot's API token
       PILLSBOT__CONNECTION__CHATID: "" # your Telegram group chat ID
-      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00+02:00" # the begin date and time
+      PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00" # the begin date and time (local)
     restart: unless-stopped
 ```
 
