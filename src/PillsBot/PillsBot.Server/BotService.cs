@@ -35,7 +35,6 @@ namespace PillsBot.Server
 
             DateTime begins = _options.Reminder.Begins;
             TimeSpan interval = _options.Reminder.Interval;
-            string message = await _messageProvider.GetMessage(stoppingToken);
 
             DateTime next = GetNext(begins, interval);
             _logger.LogInformation("Next reminder comes off at {Next}", next);
@@ -44,6 +43,7 @@ namespace PillsBot.Server
             {
                 if (next <= DateTime.Now)
                 {
+                    string message = await _messageProvider.GetMessage(stoppingToken);
                     await _messenger.Notify(message, stoppingToken);
 
                     next = GetNext(begins, interval);
