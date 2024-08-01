@@ -36,7 +36,6 @@ pills-bot  | [17:17:49 INF] Next reminder comes off at 06/18/2023 20:00:00
 
 Environment variables are listed below:
 
-|---|---|---|---|
 |Environment variable|Required|Default value|Description|
 |---|---|---|---|
 |PILLSBOT__CONNECTION__APITOKEN|Yes||The API token for your bot in Telegram|
