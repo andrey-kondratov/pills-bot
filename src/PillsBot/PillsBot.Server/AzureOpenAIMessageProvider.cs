@@ -31,8 +31,8 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
     private string PromptTemplate => $$$"""
         Generate {{{_options.AI.ChoicesCount}}} short ({{{_options.AI.MaxWords}}} words max) unique messages reminding the owners that it is now time to give a pill. 
         Each message should be addressed to the humans who own the pet.
-        Each message must end with an '{{{Separator}}}' sign. Output the messages in one row.
-        Use these languages evenly: {{$languages}}.
+        Each message must end with an '{{{Separator}}}' sign. Output the messages in one row, do not make a list.
+        Use these languages evenly: {{$languages}}. Only use one language in a message.
 
         The cat's gender is {{$gender}}. The cat's names are {{$names}}. 
         You may include a single name in the message, but be sure to address the owners, not the cat. 
@@ -102,6 +102,8 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 
         string[] choices = result.ToString().Split(Separator,
             StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        
+        new Random().Shuffle(choices);
 
         if (choices.Length < _options.AI.ChoicesCount)
         {
