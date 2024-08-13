@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,85 +14,103 @@ namespace PillsBot.Server;
 
 internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 {
-    private readonly IOptions<PillsBotOptions> _options;
+    private const char Separator = '!';
+
+    private readonly PillsBotOptions _options;
     private readonly ILogger<AzureOpenAIMessageProvider> _logger;
     private readonly ConfigurationMessageProvider _configurationMessageProvider;
     private readonly Kernel _kernel;
+    private readonly Queue<string> _messages = new();
 
-    public AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options, 
+    private OpenAIPromptExecutionSettings ExecutionSettings => new()
+    {
+        ChatSystemPrompt = "You are a creative veterinary assistant.",
+        MaxTokens = _options.AI.MaxTokens
+    };
+
+    private string PromptTemplate => $$$"""
+        Generate {{{_options.AI.ChoicesCount}}} short ({{{_options.AI.MaxWords}}} words max) unique messages reminding the owners that it is now time to give a pill. 
+        Each message should be addressed to the humans who own the pet.
+        Each message must end with an '{{{Separator}}}' sign. Output the messages in one row.
+        Use these languages evenly: {{$languages}}.
+
+        The cat's gender is {{$gender}}. The cat's names are {{$names}}. 
+        You may include a single name in the message, but be sure to address the owners, not the cat. 
+        Always make sure the name is in the correct case and gender.
+        Transliterate the name if its alphabet differs from that of the message.
+        """;
+
+    private KernelArguments KernelArguments => new()
+    {
+        ["languages"] = _options.AI.Languages,
+        ["names"] = _options.AI.PetNames,
+        ["gender"] = _options.AI.PetGender
+    };
+
+    public AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
         ILogger<AzureOpenAIMessageProvider> logger,
         ConfigurationMessageProvider configurationMessageProvider)
     {
-        _options = options;
+        _options = options.Value;
         _logger = logger;
         _configurationMessageProvider = configurationMessageProvider;
 
-        string endpoint = options.Value.AI.Azure.Endpoint
+        string endpoint = _options.AI.Azure.Endpoint
             ?? throw new InvalidOperationException("Azure OpenAI endpoint is not configured.");
-        string key = options.Value.AI.Azure.Key
+        string key = _options.AI.Azure.Key
             ?? throw new InvalidOperationException("Azure OpenAI key is not configured.");
-        string deploymentName = options.Value.AI.Azure.DeploymentName
+        string deploymentName = _options.AI.Azure.DeploymentName
             ?? throw new InvalidOperationException("Azure OpenAI deployment name is not configured.");
-            
+
         IKernelBuilder builder = Kernel.CreateBuilder()
             .AddAzureOpenAIChatCompletion(deploymentName, endpoint, key);
 
-        builder.Services.AddLogging(builder => 
-            builder.AddConsole().SetMinimumLevel(options.Value.AI.LogLevel));
+        builder.Services.AddLogging(builder =>
+            builder.AddConsole().SetMinimumLevel(_options.AI.LogLevel));
 
         _kernel = builder.Build();
     }
 
-    public Task<string> GetMessage(CancellationToken cancellationToken = default)
+    public async Task<string> GetMessage(CancellationToken cancellationToken = default)
     {
-        string systemPrompt = @"
-            You are a friendly assistant who reminds cat owners
-            to give a pill to their cat twice a day.";
-
-        string promptTemplate = @"
-            The cat's names are {{$names}}. You may include a single name in the message, but be sure to address the owners, not the cat.
-            The cat's gender is {{$gender}}. Make sure to consider the gender if the language has different words for the cat depending on the gender.
-
-            Generate a short message reminding the owners that it is now time to give a pill. 
-            The message should be addressed to a human who will be giving the cat a pill.
-
-            The message must end with an exclamation sign.
-
-            Keep the message length at most 3 words.
-            Use either of these languages with uniform probability: {{$languages}}. 
-            ";
-
-        OpenAIPromptExecutionSettings executionSettings = new()
+        if (_messages.TryDequeue(out string result))
         {
-            ChatSystemPrompt = systemPrompt,
-            Temperature = 0.7,
-            MaxTokens = 100
-        };
+            return result;
+        }
 
-        KernelArguments args = new(executionSettings)
-        {
-            ["languages"] = _options.Value.AI.Languages,
-            ["names"] = _options.Value.AI.PetNames,
-            ["gender"] = _options.Value.AI.PetGender
-        };
-
-        KernelFunction function = _kernel.CreateFunctionFromPrompt(promptTemplate, executionSettings);
-
-        return GetMessageInternal(function, args, cancellationToken);
-    }
-
-    private async Task<string> GetMessageInternal(KernelFunction function, KernelArguments arguments, 
-        CancellationToken cancellationToken)
-    {
         try
         {
-            FunctionResult result = await _kernel.InvokeAsync(function, arguments, cancellationToken);
-            return result.ToString();
+            foreach (string message in await GetNewMessages(cancellationToken))
+            {
+                _messages.Enqueue(message);
+            }
+
+            return _messages.Dequeue();
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Error invoking the prompt. Defaulting to the message in configuration.");
+            _logger.LogError(exception, "Error getting new messages from AI. Defaulting to the message in configuration.");
+
             return await _configurationMessageProvider.GetMessage(cancellationToken);
         }
+    }
+
+    private async Task<IEnumerable<string>> GetNewMessages(CancellationToken cancellationToken)
+    {
+        KernelFunction function = _kernel.CreateFunctionFromPrompt(PromptTemplate, ExecutionSettings);
+        FunctionResult result = await _kernel.InvokeAsync(function, KernelArguments, cancellationToken);
+
+        string[] choices = result.ToString().Split(Separator,
+            StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        if (choices.Length < _options.AI.ChoicesCount)
+        {
+            _logger.LogWarning("Received {ActualChoices} options, expected {ExpectedChoices}. Ignoring the last option.",
+                choices.Length, _options.AI.ChoicesCount);
+
+            return choices.Take(choices.Length - 1);
+        }
+
+        return choices;
     }
 }

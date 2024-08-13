@@ -18,7 +18,7 @@ namespace PillsBot.Server.Configuration
                 .AddHostedService<BotService>();
             
             services
-                .AddTransient<AzureOpenAIMessageProvider>()
+                .AddSingleton<AzureOpenAIMessageProvider>()
                 .AddTransient<ConfigurationMessageProvider>()
                 .AddTransient<IMessageProvider>(provider => provider
                     .GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.Enabled

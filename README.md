@@ -59,6 +59,9 @@ All the configuration parameters are listed below.
 |PILLSBOT__AI__LANGUAGES|No|English|Comma-separated list of languages|
 |PILLSBOT__AI__PETNAMES|No|unknown|The name(s) the cat is called|
 |PILLSBOT__AI__PETGENDER|No|unknown|The gender of the cat (male or female)|
+|PILLSBOT__AI__CHOICESCOUNT|No|50|Number of messages to request from AI each time|
+|PILLSBOT__AI__MAXWORDS|No|5|Max words to use in a message|
+|PILLSBOT__AI__MAXTOKENS|No|500|Max tokens to allow in AI responses|
 |PILLSBOT__AI__LOGLEVEL|No|Warning|The minimum log level for Semantic Kernel diagnostics|
 |PILLSBOT__AI__AZURE__ENDPOINT|If AI enabled||The Azure OpenAI endpoint|
 |PILLSBOT__AI__AZURE__KEY|If AI enabled||The Azure OpenAI API key|
