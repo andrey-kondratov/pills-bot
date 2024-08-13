@@ -35,4 +35,4 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
       - name: Build and push
-        run: dotnet cake docker.cake --target Push --tag ${{ steps.meta.outputs.tags }}
+        run: dotnet cake docker.cake --target Push --tag ${{ steps.meta.outputs.version }}
