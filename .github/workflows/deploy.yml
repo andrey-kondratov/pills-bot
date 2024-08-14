@@ -18,6 +18,7 @@ jobs:
               environment:
                 PILLSBOT__CONNECTION__APITOKEN: ${{ secrets.PILLSBOT__CONNECTION__APITOKEN }}
                 PILLSBOT__CONNECTION__CHATID: "${{ secrets.PILLSBOT__CONNECTION__CHATID }}"
+                PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
                 PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
                 PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
                 PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
