@@ -1,16 +1,14 @@
 #addin nuget:?package=Cake.Docker&version=1.3.0
 
-var target = Argument("target", "Default");
-var tag = Argument("tag", "latest");
+var target = Argument("target", "Build");
+var registry = Argument("registry", "andrey-kondratov");
 var image = Argument("image", "pills-bot");
-var registry = Argument("registry", "andreikondratov");
+var tag = Argument("tag", "latest");
+var username = Argument("username", "andrey-kondratov");
+var server = Argument("server", "ghcr.io");
 
-string amd64RegistryReference = $"{registry}/{image}:{tag}";
-string arm64RegistryReference = $"{registry}/{image}:{tag}-arm64v8";
-
-// General
-Task("Default")
-    .IsDependentOn("Build");
+string amd64RegistryReference = $"{server}/{registry}/{image}:{tag}";
+string arm64RegistryReference = $"{server}/{registry}/{image}:{tag}-arm64v8";
 
 // Build
 Task("Build")
@@ -38,10 +36,15 @@ Task("Push")
 
 Task("PushAmd64")
     .IsDependentOn("BuildAmd64")
+    .IsDependentOn("DockerLogin")
     .Does(() => DockerPush(amd64RegistryReference));
 
 Task("PushArm64")
     .IsDependentOn("BuildArm64")
+    .IsDependentOn("DockerLogin")
     .Does(() => DockerPush(arm64RegistryReference));
+
+Task("DockerLogin")
+    .Does(() => DockerLogin(new() { Username = username, PasswordStdin = true }, server));
 
 RunTarget(target);
