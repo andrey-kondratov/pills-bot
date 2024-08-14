@@ -5,7 +5,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: host,ARM64
+    runs-on: [host, ARM64]
     environment: prod
     steps:
       - name: Update DockerCompose
