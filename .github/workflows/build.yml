@@ -28,7 +28,7 @@ jobs:
         with:
           images: ${{ vars.DOCKERHUB_REGISTRY }}/${{ vars.DOCKERHUB_IMAGE }}
           tags: |
-            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=pr
       - name: Build and push
         run: dotnet cake --target Push --registry ${{ vars.DOCKERHUB_REGISTRY }} --image ${{ vars.DOCKERHUB_IMAGE }} --tag ${{ steps.meta.outputs.version }}
