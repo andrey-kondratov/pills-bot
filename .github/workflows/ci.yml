@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   pull_request:
@@ -15,44 +15,29 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=pr
       - name: Restore tools
         run: dotnet tool restore
       - name: Build
         run: dotnet cake
       - name: Push
-        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ steps.meta.outputs.version }}
-    
-    outputs:
-      server: ghcr.io
-      registry: andrey-kondratov
-      image: pills-bot
-      version: ${{ steps.meta.outputs.version }}
+        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ github.repository.is_default_branch && 'latest' || format('pr-{0}', github.event.pull_request.number) }}
   deploy:
-    runs-on: host
-    needs: build
-    environment:
-      name: bayard-test
+    if: github.repository.is_default_branch
+    runs-on: host,ARM64
+    environment: prod
     steps:
       - name: Update DockerCompose
         run: |
           cat << EOF > docker-compose.yml
           services:
             bot:
-              image: ${{ needs.build.outputs.server }}/${{ needs.build.outputs.registry }}/${{ needs.build.outputs.image }}:${{ needs.build.outputs.version }}-arm64v8
+              image: ghcr.io/${{ github.repository }}:latest-arm64v8
               container_name: pills-bot
               environment:
                 PILLSBOT__CONNECTION__APITOKEN: ${{ secrets.PILLSBOT__CONNECTION__APITOKEN }}
                 PILLSBOT__CONNECTION__CHATID: "${{ secrets.PILLSBOT__CONNECTION__CHATID }}"
-                PILLSBOT__REMINDER__INTERVAL: ${{ vars.PILLSBOT__REMINDER__INTERVAL }}
                 PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
-                PILLSBOT__AI__LANGUAGES: ${{ vars.PILLSBOT__AI__LANGUAGES }}
+                PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
                 PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
                 PILLSBOT__AI__PETGENDER: ${{ secrets.PILLSBOT__AI__PETGENDER }}
                 PILLSBOT__AI__LOGLEVEL: ${{ vars.PILLSBOT__AI__LOGLEVEL }}
