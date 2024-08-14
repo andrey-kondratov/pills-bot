@@ -35,7 +35,7 @@ jobs:
       image: pills-bot
       version: ${{ steps.meta.outputs.version }}
   deploy:
-    runs-on: rpi-media,arm64
+    runs-on: host
     needs: build
     environment:
       name: bayard-test
