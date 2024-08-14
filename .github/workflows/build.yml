@@ -15,16 +15,9 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=pr
       - name: Restore tools
         run: dotnet tool restore
       - name: Build
         run: dotnet cake
       - name: Push
-        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ steps.meta.outputs.version }}
+        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ github.repository.is_default_branch && 'latest' || format('pr-{0}', github.event.pull_request.number) }}

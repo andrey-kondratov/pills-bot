@@ -1,5 +1,3 @@
-[![Docker Pulls](https://img.shields.io/docker/pulls/andreikondratov/pills-bot)](https://hub.docker.com/r/andreikondratov/pills-bot)
-
 # Pills bot
 
 If you have a cat that needs pills given to him on a regular schedule, and you sometimes forget - this Telegram bot will remind you.
@@ -17,7 +15,7 @@ Create a `docker-compose.yml`:
 ```yml
 services:
   bot:
-    image: andreikondratov/pills-bot:latest # or latest-arm64v8 if running on Raspberry Pi
+    image: ghcr.io/andrey-kondratov/pills-bot:latest # or latest-arm64v8 if running on Raspberry Pi
     environment:
       PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
       PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID" # send the bot a message to see it in the logs
@@ -36,7 +34,7 @@ If you prefer not to use Azure OpenAI and simply send a static message:
 ```yml
 services:
   bot:
-    image: andreikondratov/pills-bot:latest
+    image: ghcr.io/andrey-kondratov/pills-bot:latest
     environment:
       PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
       PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID"

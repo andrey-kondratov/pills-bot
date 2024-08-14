@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: host,ARM64
+    environment: prod
+    steps:
+      - name: Update DockerCompose
+        run: |
+          cat << EOF > docker-compose.yml
+          services:
+            bot:
+              image: ghcr.io/${{ github.repository }}:latest-arm64v8
+              container_name: pills-bot
+              environment:
+                PILLSBOT__CONNECTION__APITOKEN: ${{ secrets.PILLSBOT__CONNECTION__APITOKEN }}
+                PILLSBOT__CONNECTION__CHATID: "${{ secrets.PILLSBOT__CONNECTION__CHATID }}"
+                PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
+                PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
+                PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
+                PILLSBOT__AI__PETGENDER: ${{ secrets.PILLSBOT__AI__PETGENDER }}
+                PILLSBOT__AI__LOGLEVEL: ${{ vars.PILLSBOT__AI__LOGLEVEL }}
+                PILLSBOT__AI__AZURE__ENDPOINT: ${{ secrets.PILLSBOT__AI__AZURE__ENDPOINT }}
+                PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
+                PILLSBOT__AI__AZURE__DEPLOYMENTNAME: ${{ secrets.PILLSBOT__AI__AZURE__DEPLOYMENTNAME }}
+              restart: unless-stopped
+          EOF
+      - name: Restart
+        run: docker compose up --detach --pull always --quiet-pull --remove-orphans --wait --wait-timeout 60
