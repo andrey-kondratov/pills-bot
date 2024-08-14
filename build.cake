@@ -1,14 +1,14 @@
 #addin nuget:?package=Cake.Docker&version=1.3.0
 
 var target = Argument("target", "Build");
-var registry = Argument("registry", "andreikondratov");
+var registry = Argument("registry", "andrey-kondratov");
 var image = Argument("image", "pills-bot");
 var tag = Argument("tag", "latest");
-var username = Argument("username", "andreikondratov");
-var server = Argument<string>("server", null);
+var username = Argument("username", "andrey-kondratov");
+var server = Argument("server", "ghcr.io");
 
-string amd64RegistryReference = $"{registry}/{image}:{tag}";
-string arm64RegistryReference = $"{registry}/{image}:{tag}-arm64v8";
+string amd64RegistryReference = $"{server}/{registry}/{image}:{tag}";
+string arm64RegistryReference = $"{server}/{registry}/{image}:{tag}-arm64v8";
 
 // Build
 Task("Build")

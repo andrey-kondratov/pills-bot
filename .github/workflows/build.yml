@@ -24,5 +24,7 @@ jobs:
             type=ref,event=pr
       - name: Restore tools
         run: dotnet tool restore
-      - name: Build and push
-        run: echo "${{ github.token }}" | dotnet cake --target Push --server ghcr.io --registry ${{ github.repository_owner }} --username ${{ github.repository_owner }} --tag ${{ steps.meta.outputs.version }}
+      - name: Build
+        run: dotnet cake
+      - name: Push
+        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ steps.meta.outputs.version }}
