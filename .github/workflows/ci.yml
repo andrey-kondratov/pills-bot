@@ -22,7 +22,6 @@ jobs:
       - name: Push
         run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ github.repository.is_default_branch && 'latest' || format('pr-{0}', github.event.pull_request.number) }}
   deploy:
-    if: github.repository.is_default_branch
     runs-on: host,ARM64
     environment: prod
     steps:
