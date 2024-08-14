@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  pull_request:
+    branches: 
+      - master
+  push:
+    branches: 
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Build
+        run: dotnet cake
+      - name: Push
+        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${{ github.repository.is_default_branch && 'latest' || format('pr-{0}', github.event.pull_request.number) }}
