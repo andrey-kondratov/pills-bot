@@ -27,6 +27,7 @@ jobs:
                 PILLSBOT__AI__AZURE__ENDPOINT: ${{ secrets.PILLSBOT__AI__AZURE__ENDPOINT }}
                 PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
                 PILLSBOT__AI__AZURE__DEPLOYMENTNAME: ${{ secrets.PILLSBOT__AI__AZURE__DEPLOYMENTNAME }}
+                APPLICATIONINSIGHTS__CONNECTIONSTRING: ${{ secrets.APPLICATIONINSIGHTS__CONNECTIONSTRING }}
               restart: unless-stopped
           EOF
       - name: Restart
