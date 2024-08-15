@@ -1,5 +1,6 @@
 ﻿using System;
-using Microsoft.Extensions.Configuration;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PillsBot.Server.Configuration;
 using Serilog;
@@ -9,61 +10,40 @@ namespace PillsBot.Server
 {
     public static class Program
     {
-        public static int Main(string[] args)
+        public static void Main(string[] args)
         {
-            Log.Logger = CreateLoggerConfiguration().CreateLogger();
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .CreateBootstrapLogger();
 
             try
             {
                 Log.Information("Starting host");
                 CreateHostBuilder(args).Build().Run();
-                return 0;
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, "Host terminated unexpectedly");
-                return 1;
+                Log.Fatal(ex, "An unhandled exception occurred during bootstrapping");
             }
             finally
             {
+                Log.Information("Stopping host");
                 Log.CloseAndFlush();
             }
         }
 
-        private static LoggerConfiguration CreateLoggerConfiguration()
-        {
-            LoggerConfiguration configuration = new LoggerConfiguration()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+        public static IHostBuilder CreateHostBuilder(string[] args) => Host
+            .CreateDefaultBuilder(args)
+            .ConfigureServices((context, services) => services
+                .AddApplicationInsightsTelemetryWorkerService(context.Configuration)
+                .AddPillsBot(context.Configuration.GetSection("PillsBot")))
+            .UseSerilog((context, services, configuration) => configuration
+                .MinimumLevel.Is(context.HostingEnvironment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Information)
                 .Enrich.FromLogContext()
-                .Enrich.WithProperty("Environment", Env.Name)
-                .Enrich.WithProperty("Version", new
-                {
-                    Server = typeof(Program).Assembly.GetName().Version.ToString(3)
-                }, true);
-
-            configuration = Env.IsDevelopment
-                ? configuration.MinimumLevel.Debug()
-                : configuration.MinimumLevel.Information();
-
-            return configuration.WriteTo.Console();
-        }
-
-        public static IHostBuilder CreateHostBuilder(string[] args)
-        {
-            return Host.CreateDefaultBuilder(args)
-                .ConfigureAppConfiguration((hostBuilder, hostConfig) =>
-                {
-                    hostConfig
-                        .SetBasePath(hostBuilder.HostingEnvironment.ContentRootPath)
-                        .AddJsonFile("appsettings.json", true, true)
-                        .AddJsonFile($"appsettings.{Env.Name}.json", true, true)
-                        .AddEnvironmentVariables();
-                })
-                .ConfigureServices((hostContext, services) =>
-                {
-                    services.AddPillsBot(hostContext.Configuration.GetSection("PillsBot"));
-                })
-                .UseSerilog();
-        }
+                .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
+                .Enrich.WithProperty("Version", typeof(Program).Assembly.GetName().Version.ToString(3), true)
+                .WriteTo.Console()
+                .WriteTo.ApplicationInsights(services.GetRequiredService<TelemetryConfiguration>(),
+                    TelemetryConverter.Traces));
     }
 }

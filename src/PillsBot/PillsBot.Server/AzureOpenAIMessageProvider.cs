@@ -1,29 +1,32 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using PillsBot.Server.Configuration;
 
 namespace PillsBot.Server;
 
-internal sealed class AzureOpenAIMessageProvider : IMessageProvider
+internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
+    ILogger<AzureOpenAIMessageProvider> logger,
+    ConfigurationMessageProvider configurationMessageProvider,
+    IChatCompletionService chatCompletionService) : IMessageProvider
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly PillsBotOptions _options;
-    private readonly ILogger<AzureOpenAIMessageProvider> _logger;
-    private readonly ConfigurationMessageProvider _configurationMessageProvider;
-    private readonly Kernel _kernel;
+    private readonly PillsBotOptions _options = options.Value;
+    private readonly ILogger<AzureOpenAIMessageProvider> _logger = logger;
+    private readonly ConfigurationMessageProvider _configurationMessageProvider = configurationMessageProvider;
+    private readonly IChatCompletionService _chatCompletionService = chatCompletionService;
     private readonly Queue<Choice> _choices = new();
 
     private OpenAIPromptExecutionSettings ExecutionSettings => new()
@@ -38,7 +41,7 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
         MaxTokens = _options.AI.MaxTokens
     };
 
-    private string PromptTemplate => $"""
+    private string Prompt => $"""
         Generate {_options.AI.ChoicesCount} unique chat messages, each in one of these languages: {_options.AI.Languages}.
 
         # Pet
@@ -51,30 +54,6 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
         JSON array. Field `r` for the reminder, `b` for the button, and `a` for the appreciation message. Return the raw JSON, without enclosing quotes.
         Always make sure the name is in the correct case, gender, and transliteration.
         """;
-
-    public AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
-        ILogger<AzureOpenAIMessageProvider> logger,
-        ConfigurationMessageProvider configurationMessageProvider)
-    {
-        _options = options.Value;
-        _logger = logger;
-        _configurationMessageProvider = configurationMessageProvider;
-
-        string endpoint = _options.AI.Azure.Endpoint
-            ?? throw new InvalidOperationException("Azure OpenAI endpoint is not configured.");
-        string key = _options.AI.Azure.Key
-            ?? throw new InvalidOperationException("Azure OpenAI key is not configured.");
-        string deploymentName = _options.AI.Azure.DeploymentName
-            ?? throw new InvalidOperationException("Azure OpenAI deployment name is not configured.");
-
-        IKernelBuilder builder = Kernel.CreateBuilder()
-            .AddAzureOpenAIChatCompletion(deploymentName, endpoint, key);
-
-        builder.Services.AddLogging(builder =>
-            builder.AddConsole().SetMinimumLevel(_options.AI.LogLevel));
-
-        _kernel = builder.Build();
-    }
 
     public async Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
@@ -103,10 +82,11 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 
     private async Task<IEnumerable<Choice>> GetNewChoices(CancellationToken cancellationToken)
     {
-        FunctionResult result = await _kernel.InvokePromptAsync(PromptTemplate, new KernelArguments(ExecutionSettings), 
-            cancellationToken: cancellationToken);
+        ChatMessageContent content = await _chatCompletionService
+            .GetChatMessageContentAsync(Prompt, ExecutionSettings, cancellationToken: cancellationToken);
 
-        string json = result.ToString();
+        string json = content.ToString();
+
         Choice[] choices = JsonSerializer.Deserialize<Choice[]>(json, JsonSerializerOptions)
             ?? throw new InvalidOperationException($"Failed to deserialize choices as JSON. Raw response from the LLM: {json}.");
 

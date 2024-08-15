@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace PillsBot.Server.Configuration
 {
@@ -16,8 +18,14 @@ namespace PillsBot.Server.Configuration
                 .AddTransient<ITelegramClientFactory, TelegramClientFactory>()
                 .AddTransient<IMessenger, TelegramMessenger>()
                 .AddHostedService<BotService>();
-            
+
             services
+                .AddSingleton<IChatCompletionService>(provider =>
+                {
+                    AIOptions.AzureOpenAIOptions options = provider.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.Azure;
+
+                    return new AzureOpenAIChatCompletionService(options.DeploymentName, options.Endpoint, options.Key);
+                })
                 .AddSingleton<AzureOpenAIMessageProvider>()
                 .AddTransient<ConfigurationMessageProvider>()
                 .AddTransient<IMessageProvider>(provider => provider

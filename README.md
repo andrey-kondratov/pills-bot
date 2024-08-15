@@ -63,3 +63,4 @@ All the configuration parameters are listed below.
 |PILLSBOT__AI__AZURE__ENDPOINT|If AI enabled||The Azure OpenAI endpoint|
 |PILLSBOT__AI__AZURE__KEY|If AI enabled||The Azure OpenAI API key|
 |PILLSBOT__AI__AZURE__DEPLOYMENTNAME|If AI enabled||The Azure OpenAI deployment name|
+|APPLICATIONINSIGHTS__CONNECTIONSTRING|No||Azure App Insights connection string|
