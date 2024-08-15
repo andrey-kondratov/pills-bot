@@ -6,7 +6,7 @@ If you have a cat that needs pills given to him on a regular schedule, and you s
 
 - a Telegram bot registered with an API key
 - a VM, a PC or a Raspberry Pi 4 with docker runtime installed
-- (optional) an Azure OpenAI `gpt-4o` or similar language model (approx. 200 tokens per reminder or $1 per year)
+- (optional) an Azure OpenAI `gpt-4o-mini` or similar language model (takes approx. 200 input and 500 output tokens for every 20 reminders, which amounts to 0.011972 EUR per year if reminders are set to be sent twice a day)
 
 ## Configuration
 
@@ -25,7 +25,7 @@ services:
       PILLSBOT__AI__PETGENDER: male
       PILLSBOT__AI__AZURE__ENDPOINT: <YOUR AZURE OPENAI ENDPOINT>
       PILLSBOT__AI__AZURE__KEY: <YOUR API KEY TO IT>
-      PILLSBOT__AI__AZURE__DEPLOYMENTNAME: gpt-4o
+      PILLSBOT__AI__AZURE__DEPLOYMENTNAME: gpt-4o-mini
     restart: unless-stopped
 ```
 
