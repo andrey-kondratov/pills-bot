@@ -2,6 +2,7 @@
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using PillsBot.Server.Configuration;
 using Serilog;
 using Serilog.Events;
@@ -39,6 +40,7 @@ namespace PillsBot.Server
                 .AddPillsBot(context.Configuration.GetSection("PillsBot")))
             .UseSerilog((context, services, configuration) => configuration
                 .MinimumLevel.Is(context.HostingEnvironment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Information)
+                .MinimumLevel.Override("Microsoft.SemanticKernel", (LogEventLevel) services.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.LogLevel)
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
                 .Enrich.WithProperty("Version", typeof(Program).Assembly.GetName().Version.ToString(3), true)
