@@ -5,5 +5,5 @@ namespace PillsBot.Server;
 
 internal interface IMessageProvider
 {
-    internal Task<string> GetMessage(CancellationToken cancellationToken = default);
+    internal Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default);
 }

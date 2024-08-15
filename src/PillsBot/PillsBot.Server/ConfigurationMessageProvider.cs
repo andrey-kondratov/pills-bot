@@ -9,8 +9,8 @@ internal sealed class ConfigurationMessageProvider(IOptions<PillsBotOptions> opt
 {
     private readonly IOptions<PillsBotOptions> _options = options;
 
-    public Task<string> GetMessage(CancellationToken cancellationToken = default)
+    public Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(_options.Value.Reminder.Message);
+        return Task.FromResult((_options.Value.Reminder.Message, "Pill given!", "🐱"));
     }
 }

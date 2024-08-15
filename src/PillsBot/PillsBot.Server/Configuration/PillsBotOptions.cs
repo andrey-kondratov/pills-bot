@@ -31,9 +31,8 @@ namespace PillsBot.Server.Configuration
         public string PetGender { get; set; } = "unknown";
         public LogLevel LogLevel { get; set; } = LogLevel.Warning;
         public AzureOpenAIOptions Azure { get; set; } = new();
-        public int ChoicesCount { get; set; } = 50;
-        public int MaxWords { get; set; } = 5;
-        public int MaxTokens { get; set; } = 500;
+        public int ChoicesCount { get; set; } = 20;
+        public int MaxTokens { get; set; } = 1000;
 
         public class AzureOpenAIOptions
         {

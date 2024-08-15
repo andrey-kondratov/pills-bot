@@ -43,8 +43,8 @@ namespace PillsBot.Server
             {
                 if (next <= DateTime.Now)
                 {
-                    string message = await _messageProvider.GetMessage(stoppingToken);
-                    await _messenger.Notify(message, stoppingToken);
+                    (string reminder, string button, string appreciation) = await _messageProvider.GetMessage(stoppingToken);
+                    await _messenger.Notify(reminder, button, appreciation, stoppingToken);
 
                     next = GetNext(begins, interval);
                     _logger.LogInformation("Next reminder comes off at {Next}", next);

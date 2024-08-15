@@ -43,15 +43,15 @@ namespace PillsBot.Server
             _logger.LogInformation("Started receiving updates.");
         }
 
-        public async Task Notify(string message, CancellationToken cancellationToken = default)
+        public async Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default)
         {
             ChatId chatId = _options.Connection.ChatId ??
                 throw new InvalidOperationException("Chat id not configured");
 
-            IReplyMarkup replyMarkup = GetReplyMarkup();
+            IReplyMarkup replyMarkup = GetReplyMarkup(button, appreciation);
 
-            _logger.LogInformation("Sending message: {Message} to chat {ChatId}", message, chatId);
-            await _client.SendTextMessageAsync(chatId, message, replyMarkup: replyMarkup,
+            _logger.LogInformation("Sending message: {Message} to chat {ChatId}", reminder, chatId);
+            await _client.SendTextMessageAsync(chatId, reminder, replyMarkup: replyMarkup,
                 cancellationToken: cancellationToken);
 
             _logger.LogInformation("Message sent.");
@@ -90,7 +90,7 @@ namespace PillsBot.Server
             await _client.DeleteMessageAsync(chatId, query.Message.MessageId, cancellationToken);
 
             // fire callback
-            await _client.AnswerCallbackQueryAsync(query.Id, "🐱", cancellationToken: cancellationToken);
+            await _client.AnswerCallbackQueryAsync(query.Id, query.Data, cancellationToken: cancellationToken);
         }
 
         private Task OnClientMessage(Message message)
@@ -99,9 +99,15 @@ namespace PillsBot.Server
             return Task.CompletedTask;
         }
 
-        private static InlineKeyboardMarkup GetReplyMarkup()
+        private InlineKeyboardMarkup GetReplyMarkup(string button, string appreciation)
         {
-            var inlineKeyboardButton = InlineKeyboardButton.WithCallbackData("Eaten!", "roger");
+            if (appreciation.Length > 64)
+            {
+                _logger.LogWarning("Appreciation message \"{Appreciation}\" length is greater than 64. Will truncate.", appreciation);
+                appreciation = appreciation[..64];
+            }
+
+            var inlineKeyboardButton = InlineKeyboardButton.WithCallbackData(button, appreciation);
             var result = new InlineKeyboardMarkup(inlineKeyboardButton);
             return result;
         }
