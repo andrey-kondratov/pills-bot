@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,38 +15,42 @@ namespace PillsBot.Server;
 
 internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 {
-    private const char Separator = '!';
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     private readonly PillsBotOptions _options;
     private readonly ILogger<AzureOpenAIMessageProvider> _logger;
     private readonly ConfigurationMessageProvider _configurationMessageProvider;
     private readonly Kernel _kernel;
-    private readonly Queue<string> _messages = new();
+    private readonly Queue<Choice> _choices = new();
 
     private OpenAIPromptExecutionSettings ExecutionSettings => new()
     {
-        ChatSystemPrompt = "You are a creative veterinary assistant.",
+        ChatSystemPrompt = """
+            You are a smart assistant that reminds pet owners when it is time to give a pill. 
+
+            A reminder is a chat message with a short text (at most 5 words), an acknowledgement button with another text (at most 3 words), and an appreciation message (at most 3 words).
+
+            Upon receiving the reminder, owners will give the pill to their pet and confirm it by clicking the button. The button will then hide the reminder and show the appreciation message.
+            """,
         MaxTokens = _options.AI.MaxTokens
     };
 
-    private string PromptTemplate => $$$"""
-        Generate {{{_options.AI.ChoicesCount}}} short ({{{_options.AI.MaxWords}}} words max) unique messages reminding the owners that it is now time to give a pill. 
-        Each message should be addressed to the humans who own the pet.
-        Each message must end with an '{{{Separator}}}' sign. Output the messages in one row, do not make a list.
-        Use these languages evenly: {{$languages}}. Only use one language in a message.
+    private string PromptTemplate => $"""
+        Generate {_options.AI.ChoicesCount} unique chat messages, each in one of these languages: {_options.AI.Languages}.
 
-        The cat's gender is {{$gender}}. The cat's names are {{$names}}. 
-        You may include a single name in the message, but be sure to address the owners, not the cat. 
-        Always make sure the name is in the correct case and gender.
-        Transliterate the name if its alphabet differs from that of the message.
+        # Pet
+
+        Names: {_options.AI.PetNames}.
+        Gender: {_options.AI.PetGender}.
+
+        # Output format
+        
+        JSON array. Field `r` for the reminder, `b` for the button, and `a` for the appreciation message. Return the raw JSON, without enclosing quotes.
+        Always make sure the name is in the correct case, gender, and transliteration.
         """;
-
-    private KernelArguments KernelArguments => new()
-    {
-        ["languages"] = _options.AI.Languages,
-        ["names"] = _options.AI.PetNames,
-        ["gender"] = _options.AI.PetGender
-    };
 
     public AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
         ILogger<AzureOpenAIMessageProvider> logger,
@@ -71,21 +76,22 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
         _kernel = builder.Build();
     }
 
-    public async Task<string> GetMessage(CancellationToken cancellationToken = default)
+    public async Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
-        if (_messages.TryDequeue(out string result))
+        if (_choices.TryDequeue(out Choice result))
         {
-            return result;
+            return (result.Reminder, result.Button, result.Appreciation);
         }
 
         try
         {
-            foreach (string message in await GetNewMessages(cancellationToken))
+            foreach (Choice choice in await GetNewChoices(cancellationToken))
             {
-                _messages.Enqueue(message);
+                _choices.Enqueue(choice);
             }
 
-            return _messages.Dequeue();
+            result = _choices.Dequeue();
+            return (result.Reminder, result.Button, result.Appreciation);
         }
         catch (Exception exception)
         {
@@ -95,24 +101,28 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
         }
     }
 
-    private async Task<IEnumerable<string>> GetNewMessages(CancellationToken cancellationToken)
+    private async Task<IEnumerable<Choice>> GetNewChoices(CancellationToken cancellationToken)
     {
-        KernelFunction function = _kernel.CreateFunctionFromPrompt(PromptTemplate, ExecutionSettings);
-        FunctionResult result = await _kernel.InvokeAsync(function, KernelArguments, cancellationToken);
+        FunctionResult result = await _kernel.InvokePromptAsync(PromptTemplate, new KernelArguments(ExecutionSettings), 
+            cancellationToken: cancellationToken);
 
-        string[] choices = result.ToString().Split(Separator,
-            StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        
+        string json = result.ToString();
+        Choice[] choices = JsonSerializer.Deserialize<Choice[]>(json, JsonSerializerOptions)
+            ?? throw new InvalidOperationException($"Failed to deserialize choices as JSON. Raw response from the LLM: {json}.");
+
         new Random().Shuffle(choices);
-
-        if (choices.Length < _options.AI.ChoicesCount)
-        {
-            _logger.LogWarning("Received {ActualChoices} options, expected {ExpectedChoices}. Ignoring the last option.",
-                choices.Length, _options.AI.ChoicesCount);
-
-            return choices.Take(choices.Length - 1);
-        }
-
         return choices;
+    }
+
+    internal record Choice
+    {
+        [JsonPropertyName("r")]
+        public string Reminder { get; init; }
+
+        [JsonPropertyName("b")]
+        public string Button { get; init; }
+
+        [JsonPropertyName("a")]
+        public string Appreciation { get; init; }
     }
 }

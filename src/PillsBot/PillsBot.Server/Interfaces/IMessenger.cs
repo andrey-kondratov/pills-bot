@@ -6,6 +6,6 @@ namespace PillsBot.Server
     internal interface IMessenger
     {
         Task Start(CancellationToken cancellationToken = default);
-        Task Notify(string message, CancellationToken cancellationToken = default);
+        Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default);
     }
 }
