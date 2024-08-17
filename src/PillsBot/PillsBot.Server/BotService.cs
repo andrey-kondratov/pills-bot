@@ -27,7 +27,7 @@ namespace PillsBot.Server
             }
             catch (Exception exception)
             {
-                _logger.LogError(EventIds.BotStartupFailed, exception, "Failed to start messenger");
+                _logger.LogError(exception, "Failed to start messenger");
                 return;
             }
 

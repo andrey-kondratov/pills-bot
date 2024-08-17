@@ -7,7 +7,19 @@
     <AssemblyName>bot</AssemblyName>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>6d2b514b-afd4-41c0-8015-3f9aaa7013bc</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="appsettings.Development.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />

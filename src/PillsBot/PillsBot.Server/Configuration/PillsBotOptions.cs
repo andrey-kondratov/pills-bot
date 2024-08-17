@@ -12,7 +12,7 @@ namespace PillsBot.Server.Configuration
 
     public class ConnectionOptions
     {
-        public string ApiToken { get; set; }
+        public string? ApiToken { get; set; }
         public long? ChatId { get; set; }
     }
 
@@ -30,15 +30,15 @@ namespace PillsBot.Server.Configuration
         public string PetNames { get; set; } = "unknown";
         public string PetGender { get; set; } = "unknown";
         public LogLevel LogLevel { get; set; } = LogLevel.Warning;
-        public AzureOpenAIOptions Azure { get; set; } = new();
+        public AzureOpenAIOptions? Azure { get; set; }
         public int ChoicesCount { get; set; } = 20;
         public int MaxTokens { get; set; } = 1000;
 
         public class AzureOpenAIOptions
         {
-            public string Endpoint { get; set; }
-            public string Key { get; set; }
-            public string DeploymentName { get; set; }
+            public required string Endpoint { get; set; }
+            public required string Key { get; set; }
+            public required string DeploymentName { get; set; }
         }
     }
 }

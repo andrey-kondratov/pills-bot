@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,16 +18,25 @@ namespace PillsBot.Server.Configuration
                 .Configure<PillsBotOptions>(configuration);
 
             services
-                .AddTransient<ITelegramClientFactory, TelegramClientFactory>()
                 .AddTransient<IMessenger, TelegramMessenger>()
                 .AddHostedService<BotService>();
 
             services
                 .AddSingleton<IChatCompletionService>(provider =>
                 {
-                    AIOptions.AzureOpenAIOptions options = provider.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.Azure;
+                    AIOptions options = provider.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI;
 
-                    return new AzureOpenAIChatCompletionService(options.DeploymentName, options.Endpoint, options.Key, 
+                    if (!options.Enabled)
+                    {
+                        throw new InvalidOperationException("AI features are disabled.");
+                    }
+
+                    if (options.Azure is null)
+                    {
+                        throw new InvalidOperationException("Missing Azure AI configuration.");
+                    }
+
+                    return new AzureOpenAIChatCompletionService(options.Azure.DeploymentName, options.Azure.Endpoint, options.Azure.Key, 
                         loggerFactory: new LoggerFactory()
                             .AddSerilog(provider.GetRequiredService<Serilog.ILogger>()));
                 })

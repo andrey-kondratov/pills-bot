@@ -57,7 +57,7 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
 
     public async Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
-        if (_choices.TryDequeue(out Choice result))
+        if (_choices.TryDequeue(out Choice? result))
         {
             return (result.Reminder, result.Button, result.Appreciation);
         }
@@ -97,12 +97,12 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
     internal record Choice
     {
         [JsonPropertyName("r")]
-        public string Reminder { get; init; }
+        public required string Reminder { get; init; }
 
         [JsonPropertyName("b")]
-        public string Button { get; init; }
+        public required string Button { get; init; }
 
         [JsonPropertyName("a")]
-        public string Appreciation { get; init; }
+        public required string Appreciation { get; init; }
     }
 }

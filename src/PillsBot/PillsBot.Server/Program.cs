@@ -19,7 +19,6 @@ namespace PillsBot.Server
 
             try
             {
-                Log.Information("Starting host");
                 CreateHostBuilder(args).Build().Run();
             }
             catch (Exception ex)
@@ -28,7 +27,6 @@ namespace PillsBot.Server
             }
             finally
             {
-                Log.Information("Stopping host");
                 Log.CloseAndFlush();
             }
         }
@@ -43,7 +41,7 @@ namespace PillsBot.Server
                 .MinimumLevel.Override("Microsoft.SemanticKernel", (LogEventLevel) services.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.LogLevel)
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
-                .Enrich.WithProperty("Version", typeof(Program).Assembly.GetName().Version.ToString(3), true)
+                .Enrich.WithProperty("Version", typeof(Program).Assembly.GetName().Version?.ToString(3), true)
                 .WriteTo.Console()
                 .WriteTo.ApplicationInsights(services.GetRequiredService<TelemetryConfiguration>(),
                     TelemetryConverter.Traces));

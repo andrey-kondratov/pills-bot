@@ -13,8 +13,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace PillsBot.Server
 {
-    internal class TelegramMessenger(ILogger<TelegramMessenger> logger,
-        ITelegramClientFactory clientFactory, IOptions<PillsBotOptions> options)
+    internal class TelegramMessenger(ILogger<TelegramMessenger> logger, IOptions<PillsBotOptions> options)
         : IMessenger, IUpdateHandler
     {
         private static readonly ReceiverOptions ReceiverOptions = new()
@@ -24,12 +23,15 @@ namespace PillsBot.Server
 
         private readonly ILogger<TelegramMessenger> _logger = logger;
         private readonly PillsBotOptions _options = options.Value;
-        private readonly ITelegramClientFactory _clientFactory = clientFactory;
-        private ITelegramBotClient _client;
+        private readonly TelegramBotClient _client = new(options.Value.Connection.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
 
         public async Task Start(CancellationToken cancellationToken = default)
         {
-            _client = await _clientFactory.Create(_options.Connection.ApiToken, cancellationToken);
+            bool valid = await _client.TestApiAsync(cancellationToken);
+            if (!valid)
+            {
+                throw new InvalidOperationException("Telegram token validation failed.");
+            }
 
             // webhooks not supported
             WebhookInfo webhookInfo = await _client.GetWebhookInfoAsync(cancellationToken);
@@ -75,9 +77,15 @@ namespace PillsBot.Server
             return Task.CompletedTask;
         }
 
-        private async Task OnCallbackQuery(CallbackQuery query, CancellationToken cancellationToken)
+        private async Task OnCallbackQuery(CallbackQuery? query, CancellationToken cancellationToken)
         {
             _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
+
+            if (query?.Message is null)
+            {
+                _logger.LogWarning("Callback query message was empty. Enable trace log level to see the details.");
+                return;
+            }
 
             long chatId = query.Message.Chat.Id;
             if (chatId != _options.Connection.ChatId)
@@ -93,7 +101,7 @@ namespace PillsBot.Server
             await _client.AnswerCallbackQueryAsync(query.Id, query.Data, cancellationToken: cancellationToken);
         }
 
-        private Task OnClientMessage(Message message)
+        private Task OnClientMessage(Message? message)
         {
             _logger.LogInformation("A message received: {@Message}", message);
             return Task.CompletedTask;
