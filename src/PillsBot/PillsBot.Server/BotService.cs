@@ -10,12 +10,12 @@ using PillsBot.Server.TextGeneration;
 
 namespace PillsBot.Server
 {
-    internal class BotService(ILogger<BotService> logger, IChatClient messenger,
+    internal class BotService(ILogger<BotService> logger, IChatClient chatClient,
         IOptions<PillsBotOptions> options, IMessageProvider messageProvider)
         : BackgroundService
     {
         private readonly ILogger<BotService> _logger = logger;
-        private readonly IChatClient _messenger = messenger;
+        private readonly IChatClient _chatClient = chatClient;
         private readonly PillsBotOptions _options = options.Value;
         private readonly IMessageProvider _messageProvider = messageProvider;
 
@@ -25,7 +25,7 @@ namespace PillsBot.Server
 
             try
             {
-                await _messenger.Start(stoppingToken);
+                await _chatClient.Start(stoppingToken);
             }
             catch (Exception exception)
             {
@@ -46,7 +46,7 @@ namespace PillsBot.Server
                 if (next <= DateTime.Now)
                 {
                     (string reminder, string button, string appreciation) = await _messageProvider.GetMessage(stoppingToken);
-                    await _messenger.Notify(reminder, button, appreciation, stoppingToken);
+                    await _chatClient.Notify(reminder, button, appreciation, stoppingToken);
 
                     next = GetNext(begins, interval);
                     _logger.LogInformation("Next reminder comes off at {Next}", next);
