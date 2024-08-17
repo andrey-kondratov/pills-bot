@@ -10,8 +10,10 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using PillsBot.Server.Configuration;
+using Polly;
+using Polly.Retry;
 
-namespace PillsBot.Server;
+namespace PillsBot.Server.TextGeneration;
 
 internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
     ILogger<AzureOpenAIMessageProvider> logger,
@@ -20,7 +22,8 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true
     };
 
     private readonly PillsBotOptions _options = options.Value;
@@ -28,6 +31,30 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
     private readonly ConfigurationMessageProvider _configurationMessageProvider = configurationMessageProvider;
     private readonly IChatCompletionService _chatCompletionService = chatCompletionService;
     private readonly Queue<Choice> _choices = new();
+    private readonly Random _random = new();
+    private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
+        .AddRetry(new RetryStrategyOptions
+        {
+            DelayGenerator = static args =>
+            {
+                TimeSpan delay = args.AttemptNumber switch
+                {
+                    0 => TimeSpan.Zero,
+                    1 => TimeSpan.FromSeconds(1),
+                    _ => TimeSpan.FromMinutes(1)
+                };
+
+                return new ValueTask<TimeSpan?>(delay);
+            },
+            OnRetry = args =>
+            {
+                logger.LogWarning("OnRetry, Attempt: {AttemptNumber}", args.AttemptNumber);
+
+                return default;
+            }
+        })
+        .Build();
+
 
     private OpenAIPromptExecutionSettings ExecutionSettings => new()
     {
@@ -57,14 +84,14 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
 
     public async Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
-        if (_choices.TryDequeue(out Choice result))
+        if (_choices.TryDequeue(out Choice? result))
         {
             return (result.Reminder, result.Button, result.Appreciation);
         }
 
         try
         {
-            foreach (Choice choice in await GetNewChoices(cancellationToken))
+            foreach (Choice choice in await _resiliencePipeline.ExecuteAsync(GetNewChoices, cancellationToken))
             {
                 _choices.Enqueue(choice);
             }
@@ -80,29 +107,38 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
         }
     }
 
-    private async Task<IEnumerable<Choice>> GetNewChoices(CancellationToken cancellationToken)
+    private async ValueTask<IEnumerable<Choice>> GetNewChoices(CancellationToken cancellationToken)
     {
-        ChatMessageContent content = await _chatCompletionService
-            .GetChatMessageContentAsync(Prompt, ExecutionSettings, cancellationToken: cancellationToken);
+        ChatMessageContent content;
+        try
+        {
+            content = await _chatCompletionService
+                .GetChatMessageContentAsync(Prompt, ExecutionSettings, cancellationToken: cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Error getting the chat message content.");
+            throw new ChatCompletionException(exception);
+        }
 
         string json = content.ToString();
-
         Choice[] choices = JsonSerializer.Deserialize<Choice[]>(json, JsonSerializerOptions)
-            ?? throw new InvalidOperationException($"Failed to deserialize choices as JSON. Raw response from the LLM: {json}.");
+            ?? throw new InvalidOperationException("Failed to deserialize choices as JSON.");
 
-        new Random().Shuffle(choices);
+        _random.Shuffle(choices);
+
         return choices;
     }
 
     internal record Choice
     {
         [JsonPropertyName("r")]
-        public string Reminder { get; init; }
+        public required string Reminder { get; init; }
 
         [JsonPropertyName("b")]
-        public string Button { get; init; }
+        public required string Button { get; init; }
 
         [JsonPropertyName("a")]
-        public string Appreciation { get; init; }
+        public required string Appreciation { get; init; }
     }
 }

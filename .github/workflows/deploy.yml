@@ -16,8 +16,8 @@ jobs:
               image: ghcr.io/${{ github.repository }}:latest-arm64v8
               container_name: pills-bot
               environment:
-                PILLSBOT__CONNECTION__APITOKEN: ${{ secrets.PILLSBOT__CONNECTION__APITOKEN }}
-                PILLSBOT__CONNECTION__CHATID: "${{ secrets.PILLSBOT__CONNECTION__CHATID }}"
+                PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
+                PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
                 PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
                 PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
                 PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}

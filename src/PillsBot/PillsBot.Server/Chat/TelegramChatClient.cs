@@ -11,25 +11,27 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace PillsBot.Server
+namespace PillsBot.Server.Chat
 {
-    internal class TelegramMessenger(ILogger<TelegramMessenger> logger,
-        ITelegramClientFactory clientFactory, IOptions<PillsBotOptions> options)
-        : IMessenger, IUpdateHandler
+    internal class TelegramChatClient(ILogger<TelegramChatClient> logger, IOptions<PillsBotOptions> options)
+        : IChatClient, IUpdateHandler
     {
         private static readonly ReceiverOptions ReceiverOptions = new()
         {
             AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
         };
 
-        private readonly ILogger<TelegramMessenger> _logger = logger;
+        private readonly ILogger<TelegramChatClient> _logger = logger;
         private readonly PillsBotOptions _options = options.Value;
-        private readonly ITelegramClientFactory _clientFactory = clientFactory;
-        private ITelegramBotClient _client;
+        private readonly TelegramBotClient _client = new(options.Value.Telegram?.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
 
         public async Task Start(CancellationToken cancellationToken = default)
         {
-            _client = await _clientFactory.Create(_options.Connection.ApiToken, cancellationToken);
+            bool valid = await _client.TestApiAsync(cancellationToken);
+            if (!valid)
+            {
+                throw new InvalidOperationException("Telegram token validation failed.");
+            }
 
             // webhooks not supported
             WebhookInfo webhookInfo = await _client.GetWebhookInfoAsync(cancellationToken);
@@ -45,7 +47,7 @@ namespace PillsBot.Server
 
         public async Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default)
         {
-            ChatId chatId = _options.Connection.ChatId ??
+            ChatId chatId = _options.Telegram?.ChatId ??
                 throw new InvalidOperationException("Chat id not configured");
 
             IReplyMarkup replyMarkup = GetReplyMarkup(button, appreciation);
@@ -75,12 +77,18 @@ namespace PillsBot.Server
             return Task.CompletedTask;
         }
 
-        private async Task OnCallbackQuery(CallbackQuery query, CancellationToken cancellationToken)
+        private async Task OnCallbackQuery(CallbackQuery? query, CancellationToken cancellationToken)
         {
             _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
 
+            if (query?.Message is null)
+            {
+                _logger.LogWarning("Callback query message was empty. Enable trace log level to see the details.");
+                return;
+            }
+
             long chatId = query.Message.Chat.Id;
-            if (chatId != _options.Connection.ChatId)
+            if (chatId != _options.Telegram!.ChatId)
             {
                 _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", query);
                 return;
@@ -93,7 +101,7 @@ namespace PillsBot.Server
             await _client.AnswerCallbackQueryAsync(query.Id, query.Data, cancellationToken: cancellationToken);
         }
 
-        private Task OnClientMessage(Message message)
+        private Task OnClientMessage(Message? message)
         {
             _logger.LogInformation("A message received: {@Message}", message);
             return Task.CompletedTask;

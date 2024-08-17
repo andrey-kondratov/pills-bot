@@ -1,10 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Serilog;
+using Microsoft.SemanticKernel;
+using PillsBot.Server.Chat;
+using PillsBot.Server.TextGeneration;
 
 namespace PillsBot.Server.Configuration
 {
@@ -17,25 +16,29 @@ namespace PillsBot.Server.Configuration
                 .Configure<PillsBotOptions>(configuration);
 
             services
-                .AddTransient<ITelegramClientFactory, TelegramClientFactory>()
-                .AddTransient<IMessenger, TelegramMessenger>()
+                .AddTransient<IChatClient, TelegramChatClient>()
                 .AddHostedService<BotService>();
 
-            services
-                .AddSingleton<IChatCompletionService>(provider =>
-                {
-                    AIOptions.AzureOpenAIOptions options = provider.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.Azure;
+            AIOptions aiOptions = new();
+            configuration.GetSection("AI").Bind(aiOptions);
 
-                    return new AzureOpenAIChatCompletionService(options.DeploymentName, options.Endpoint, options.Key, 
-                        loggerFactory: new LoggerFactory()
-                            .AddSerilog(provider.GetRequiredService<Serilog.ILogger>()));
-                })
-                .AddSingleton<AzureOpenAIMessageProvider>()
+            if (!aiOptions.Enabled)
+            {
+                services.AddTransient<IMessageProvider, ConfigurationMessageProvider>();
+
+                return services;
+            }
+
+            if (aiOptions.Azure is null)
+            {
+                throw new InvalidOperationException("Missing Azure AI configuration.");
+            }
+
+            services
                 .AddTransient<ConfigurationMessageProvider>()
-                .AddTransient<IMessageProvider>(provider => provider
-                    .GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.Enabled
-                        ? provider.GetRequiredService<AzureOpenAIMessageProvider>()
-                        : provider.GetRequiredService<ConfigurationMessageProvider>());
+                .AddSingleton<IMessageProvider, AzureOpenAIMessageProvider>()
+                .AddKernel()
+                .AddAzureOpenAIChatCompletion(aiOptions.Azure.DeploymentName, aiOptions.Azure.Endpoint, aiOptions.Azure.Key);
 
             return services;
         }
