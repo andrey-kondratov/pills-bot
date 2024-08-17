@@ -17,8 +17,8 @@ services:
   bot:
     image: ghcr.io/andrey-kondratov/pills-bot:latest # or latest-arm64v8 if running on Raspberry Pi
     environment:
-      PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
-      PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID" # send the bot a message to see it in the logs
+      PILLSBOT__TELEGRAM__APITOKEN: "YOUR TOKEN"
+      PILLSBOT__TELEGRAM__CHATID: "YOUR CHAT OR USER ID" # send the bot a message to see it in the logs
       PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00"
       PILLSBOT__AI__ENABLED: true
       PILLSBOT__AI__PETNAMES: Whisker McFluffington
@@ -36,8 +36,8 @@ services:
   bot:
     image: ghcr.io/andrey-kondratov/pills-bot:latest
     environment:
-      PILLSBOT__CONNECTION__APITOKEN: "YOUR TOKEN"
-      PILLSBOT__CONNECTION__CHATID: "YOUR CHAT OR USER ID"
+      PILLSBOT__TELEGRAM__APITOKEN: "YOUR TOKEN"
+      PILLSBOT__TELEGRAM__CHATID: "YOUR CHAT OR USER ID"
       PILLSBOT__REMINDER__BEGINS: "2022-09-11T10:00:00"
     restart: unless-stopped
 ```
@@ -48,8 +48,8 @@ All the configuration parameters are listed below.
 
 |Environment variable|Required|Default value|Description|
 |---|---|---|---|
-|PILLSBOT__CONNECTION__APITOKEN|Yes||The API token for your bot in Telegram|
-|PILLSBOT__CONNECTION__CHATID|No||Ignore messages from chats or users other than this one|
+|PILLSBOT__TELEGRAM__APITOKEN|Yes||The API token for your bot in Telegram|
+|PILLSBOT__TELEGRAM__CHATID|No||Ignore messages from chats or users other than this one|
 |PILLSBOT__REMINDER__BEGINS|No|Start + 5 sec|The UTC date and time after which to schedule reminders|
 |PILLSBOT__REMINDER__INTERVAL|No|12 hours|The interval after which a new reminder will be sent|
 |PILLSBOT__REMINDER__MESSAGE|No|Pills time!|The default message to send|

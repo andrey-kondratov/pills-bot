@@ -11,7 +11,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using PillsBot.Server.Configuration;
 
-namespace PillsBot.Server;
+namespace PillsBot.Server.TextGeneration;
 
 internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
     ILogger<AzureOpenAIMessageProvider> logger,

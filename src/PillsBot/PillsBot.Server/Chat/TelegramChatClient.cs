@@ -11,19 +11,19 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace PillsBot.Server
+namespace PillsBot.Server.Chat
 {
-    internal class TelegramMessenger(ILogger<TelegramMessenger> logger, IOptions<PillsBotOptions> options)
-        : IMessenger, IUpdateHandler
+    internal class TelegramChatClient(ILogger<TelegramChatClient> logger, IOptions<PillsBotOptions> options)
+        : IChatClient, IUpdateHandler
     {
         private static readonly ReceiverOptions ReceiverOptions = new()
         {
             AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
         };
 
-        private readonly ILogger<TelegramMessenger> _logger = logger;
+        private readonly ILogger<TelegramChatClient> _logger = logger;
         private readonly PillsBotOptions _options = options.Value;
-        private readonly TelegramBotClient _client = new(options.Value.Connection.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
+        private readonly TelegramBotClient _client = new(options.Value.Telegram?.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
 
         public async Task Start(CancellationToken cancellationToken = default)
         {
@@ -47,7 +47,7 @@ namespace PillsBot.Server
 
         public async Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default)
         {
-            ChatId chatId = _options.Connection.ChatId ??
+            ChatId chatId = _options.Telegram?.ChatId ??
                 throw new InvalidOperationException("Chat id not configured");
 
             IReplyMarkup replyMarkup = GetReplyMarkup(button, appreciation);
@@ -88,7 +88,7 @@ namespace PillsBot.Server
             }
 
             long chatId = query.Message.Chat.Id;
-            if (chatId != _options.Connection.ChatId)
+            if (chatId != _options.Telegram!.ChatId)
             {
                 _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", query);
                 return;

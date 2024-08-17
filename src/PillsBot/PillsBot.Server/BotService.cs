@@ -4,16 +4,18 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using PillsBot.Server.Chat;
 using PillsBot.Server.Configuration;
+using PillsBot.Server.TextGeneration;
 
 namespace PillsBot.Server
 {
-    internal class BotService(ILogger<BotService> logger, IMessenger messenger,
+    internal class BotService(ILogger<BotService> logger, IChatClient messenger,
         IOptions<PillsBotOptions> options, IMessageProvider messageProvider)
         : BackgroundService
     {
         private readonly ILogger<BotService> _logger = logger;
-        private readonly IMessenger _messenger = messenger;
+        private readonly IChatClient _messenger = messenger;
         private readonly PillsBotOptions _options = options.Value;
         private readonly IMessageProvider _messageProvider = messageProvider;
 

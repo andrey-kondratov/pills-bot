@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using PillsBot.Server.Configuration;
 
-namespace PillsBot.Server;
+namespace PillsBot.Server.TextGeneration;
 
 internal sealed class ConfigurationMessageProvider(IOptions<PillsBotOptions> options) : IMessageProvider
 {

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using PillsBot.Server.Chat;
+using PillsBot.Server.TextGeneration;
 using Serilog;
 
 namespace PillsBot.Server.Configuration
@@ -18,7 +20,7 @@ namespace PillsBot.Server.Configuration
                 .Configure<PillsBotOptions>(configuration);
 
             services
-                .AddTransient<IMessenger, TelegramMessenger>()
+                .AddTransient<IChatClient, TelegramChatClient>()
                 .AddHostedService<BotService>();
 
             services
@@ -36,7 +38,7 @@ namespace PillsBot.Server.Configuration
                         throw new InvalidOperationException("Missing Azure AI configuration.");
                     }
 
-                    return new AzureOpenAIChatCompletionService(options.Azure.DeploymentName, options.Azure.Endpoint, options.Azure.Key, 
+                    return new AzureOpenAIChatCompletionService(options.Azure.DeploymentName, options.Azure.Endpoint, options.Azure.Key,
                         loggerFactory: new LoggerFactory()
                             .AddSerilog(provider.GetRequiredService<Serilog.ILogger>()));
                 })
