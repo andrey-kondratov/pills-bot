@@ -24,6 +24,8 @@ jobs:
           services:
             bot:
               image: ghcr.io/${{ github.repository }}:latest-arm64v8
+            db-init:
+              image: ghcr.io/${{ github.repository }}:latest-arm64v8
           EOF
 
           cat << EOF > server.env
