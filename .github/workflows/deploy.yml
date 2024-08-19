@@ -5,7 +5,7 @@ on:
 
 env:
   out_dir: ${{ vars.OUTPUT_DIR }}
-  tag: pr-14-arm64v8
+  tag: latest-arm64v8
 
 jobs:
   deploy:
