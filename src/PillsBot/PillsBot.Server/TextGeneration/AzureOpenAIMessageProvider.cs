@@ -72,7 +72,7 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 
         _languages = options.Value.AI.Languages
             .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Select(input => (code: input, name: GetISOLanguageName(input)))
+            .Select(input => (code: input, name: GetLanguageName(input)))
             .Where(pair => pair.name is not null)
             .ToDictionary(pair => pair.code, pair => pair.name!)
             .AsReadOnly();
@@ -151,12 +151,12 @@ internal sealed class AzureOpenAIMessageProvider : IMessageProvider
         return message;
     }
 
-    private string? GetISOLanguageName(string input)
+    private string? GetLanguageName(string input)
     {
         try
         {
             var culture = CultureInfo.GetCultureInfo(input, true);
-            return culture.TwoLetterISOLanguageName;
+            return culture.DisplayName;
         }
         catch (CultureNotFoundException exception)
         {
