@@ -11,7 +11,7 @@ on:
 
 env:
   out_dir: ${{ vars.OUTPUT_DIR }}
-  tag: ${{ github.ref == format('refs/heads/{0}', 'master') && 'latest' || format('pr-{0}', github.event.pull_request.number) }}-arm64v8
+  tag: ${{ github.ref == format('refs/heads/{0}', 'master') && 'latest' || format('pr-{0}', github.event.pull_request.number) }}
 
 jobs:
   build:
@@ -42,9 +42,9 @@ jobs:
           cat << EOF > docker-compose.override.yml
           services:
             server:
-              image: ghcr.io/${{ github.repository }}:${tag}
+              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
             db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}
+              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
           EOF
 
           cat << EOF > server.env
@@ -87,9 +87,9 @@ jobs:
           cat << EOF > docker-compose.override.yml
           services:
             server:
-              image: ghcr.io/${{ github.repository }}:${tag}
+              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
             db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}
+              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
           EOF
 
           cat << EOF > server.env
