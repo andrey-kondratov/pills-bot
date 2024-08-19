@@ -3,33 +3,48 @@ name: Deploy
 on:
   workflow_dispatch:
 
+env:
+  out_dir: ~/pills-bot/prod
+
 jobs:
   deploy:
     runs-on: [host, ARM64]
     environment: prod
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
       - name: Update DockerCompose
         run: |
-          cat << EOF > docker-compose.yml
+          mkdir -p $out_dir
+
+          cp src/docker-compose.yml $out_dir
+          cd $out_dir
+          
+          cat << EOF > docker-compose.override.yml
           services:
             bot:
               image: ghcr.io/${{ github.repository }}:latest-arm64v8
-              container_name: pills-bot
-              environment:
-                PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
-                PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
-                PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
-                PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
-                PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
-                PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
-                PILLSBOT__AI__PETGENDER: ${{ secrets.PILLSBOT__AI__PETGENDER }}
-                PILLSBOT__AI__LOGLEVEL: ${{ vars.PILLSBOT__AI__LOGLEVEL }}
-                PILLSBOT__AI__MAXTOKENS: ${{ vars.PILLSBOT__AI__MAXTOKENS }}
-                PILLSBOT__AI__AZURE__ENDPOINT: ${{ secrets.PILLSBOT__AI__AZURE__ENDPOINT }}
-                PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
-                PILLSBOT__AI__AZURE__DEPLOYMENTNAME: ${{ secrets.PILLSBOT__AI__AZURE__DEPLOYMENTNAME }}
-                APPLICATIONINSIGHTS__CONNECTIONSTRING: ${{ secrets.APPLICATIONINSIGHTS__CONNECTIONSTRING }}
-              restart: unless-stopped
+          EOF
+
+          cat << EOF > server.env
+          PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
+          PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
+          PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
+          PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
+          PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
+          PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
+          PILLSBOT__AI__PETGENDER: ${{ secrets.PILLSBOT__AI__PETGENDER }}
+          PILLSBOT__AI__LOGLEVEL: ${{ vars.PILLSBOT__AI__LOGLEVEL }}
+          PILLSBOT__AI__MAXTOKENS: ${{ vars.PILLSBOT__AI__MAXTOKENS }}
+          PILLSBOT__AI__AZURE__ENDPOINT: ${{ secrets.PILLSBOT__AI__AZURE__ENDPOINT }}
+          PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
+          PILLSBOT__AI__AZURE__DEPLOYMENTNAME: ${{ secrets.PILLSBOT__AI__AZURE__DEPLOYMENTNAME }}
+          APPLICATIONINSIGHTS__CONNECTIONSTRING: ${{ secrets.APPLICATIONINSIGHTS__CONNECTIONSTRING }}
           EOF
       - name: Restart
-        run: docker compose up --detach --pull always --quiet-pull --remove-orphans --wait --wait-timeout 60
+        run: |
+          cd $out_dir
+
+          export POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          docker compose up --detach --pull always --quiet-pull --remove-orphans --wait --wait-timeout 60

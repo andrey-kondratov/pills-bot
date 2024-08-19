@@ -1,0 +1,27 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/amd64/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      PILLSBOT__REMINDER__INTERVAL: 00:01:00
+      PILLSBOT__AI__ENABLED: true
+      PILLSBOT__AI__LOGLEVEL: Trace
+  
+  db-init:
+    build: 
+      context: .
+      dockerfile: docker/amd64/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+    
+  db:
+    ports:
+      - 5432:5432
+  
+  adminer:
+    container_name: pills-bot-adminer
+    image: adminer
+    ports:
+      - 8080:8080

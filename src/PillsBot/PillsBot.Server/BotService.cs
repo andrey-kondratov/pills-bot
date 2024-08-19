@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,13 +12,13 @@ using PillsBot.Server.TextGeneration;
 namespace PillsBot.Server
 {
     internal class BotService(ILogger<BotService> logger, IChatClient chatClient,
-        IOptions<PillsBotOptions> options, IMessageProvider messageProvider)
+        IOptions<PillsBotOptions> options, IServiceProvider serviceProvider)
         : BackgroundService
     {
         private readonly ILogger<BotService> _logger = logger;
         private readonly IChatClient _chatClient = chatClient;
         private readonly PillsBotOptions _options = options.Value;
-        private readonly IMessageProvider _messageProvider = messageProvider;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -45,7 +46,10 @@ namespace PillsBot.Server
             {
                 if (next <= DateTime.Now)
                 {
-                    (string reminder, string button, string appreciation) = await _messageProvider.GetMessage(stoppingToken);
+                    await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+
+                    IMessageProvider messageProvider = scope.ServiceProvider.GetRequiredService<IMessageProvider>();
+                    (string reminder, string button, string appreciation) = await messageProvider.GetMessage(stoppingToken);
                     await _chatClient.Notify(reminder, button, appreciation, stoppingToken);
 
                     next = GetNext(begins, interval);

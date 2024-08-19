@@ -5,7 +5,7 @@ namespace PillsBot.Server.Configuration
     public class AIOptions
     {
         public bool Enabled { get; set; } = false;
-        public string Languages { get; set; } = "English";
+        public string Languages { get; set; } = "en-US";
         public string PetNames { get; set; } = "unknown";
         public string PetGender { get; set; } = "unknown";
         public LogLevel LogLevel { get; set; } = LogLevel.Warning;
