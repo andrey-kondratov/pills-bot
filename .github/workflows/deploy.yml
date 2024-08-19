@@ -40,11 +40,12 @@ jobs:
           PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
           PILLSBOT__AI__AZURE__DEPLOYMENTNAME: ${{ secrets.PILLSBOT__AI__AZURE__DEPLOYMENTNAME }}
           APPLICATIONINSIGHTS__CONNECTIONSTRING: ${{ secrets.APPLICATIONINSIGHTS__CONNECTIONSTRING }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: Host=db;Database=${{ secrets.POSTGRES_DB }};Username=${{ secrets.POSTGRES_USER }};Password=${{ secrets.POSTGRES_PASSWORD }}
           EOF
       - name: Restart
         run: |
           cd $out_dir
-
-          export POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           docker compose up --detach --pull always --quiet-pull --remove-orphans --wait --wait-timeout 60

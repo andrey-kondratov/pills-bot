@@ -8,8 +8,6 @@ services:
       db-init:
         condition: service_completed_successfully
     env_file: ./server.env
-    environment:
-      CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: Host=db;Database=${POSTGRES_DB:-pills_bot};Username=${POSTGRES_USER:-pills_bot};Password=${POSTGRES_PASSWORD:-change_me}
     restart: unless-stopped
   
   db-init:
@@ -19,18 +17,12 @@ services:
       db:
         condition: service_healthy
     env_file: ./server.env
-    environment:
-      CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: Host=db;Database=${POSTGRES_DB:-pills_bot};Username=${POSTGRES_USER:-pills_bot};Password=${POSTGRES_PASSWORD:-change_me}
     entrypoint: /app/migrate
     
   db:
     container_name: pills-bot-db
     image: postgres:16.4-bookworm
     env_file: ./server.env
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-pills_bot}
-      POSTGRES_USER: ${POSTGRES_USER:-pills_bot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 1s
