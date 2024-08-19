@@ -1,0 +1,32 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/amd64/Dockerfile
+    environment:
+      CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: Host=db;Database=pills_bot;Username=hamlet;Password=heroics
+      DOTNET_ENVIRONMENT: Development
+      PILLSBOT__REMINDER__INTERVAL: 00:01:00
+      PILLSBOT__AI__ENABLED: true
+      PILLSBOT__AI__LOGLEVEL: Trace
+  
+  db-init:
+    build: 
+      context: .
+      dockerfile: docker/amd64/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: Host=db;Database=pills_bot;Username=hamlet;Password=heroics
+    
+  db:
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: pills_bot
+      POSTGRES_USER: hamlet
+      POSTGRES_PASSWORD: heroics
+  
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080

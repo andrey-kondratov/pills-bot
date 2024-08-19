@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -10,15 +12,13 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using PillsBot.Server.Configuration;
+using PillsBot.Server.Persistence;
 using Polly;
 using Polly.Retry;
 
 namespace PillsBot.Server.TextGeneration;
 
-internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
-    ILogger<AzureOpenAIMessageProvider> logger,
-    ConfigurationMessageProvider configurationMessageProvider,
-    IChatCompletionService chatCompletionService) : IMessageProvider
+internal sealed class AzureOpenAIMessageProvider : IMessageProvider
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
@@ -26,35 +26,57 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
         AllowTrailingCommas = true
     };
 
-    private readonly PillsBotOptions _options = options.Value;
-    private readonly ILogger<AzureOpenAIMessageProvider> _logger = logger;
-    private readonly ConfigurationMessageProvider _configurationMessageProvider = configurationMessageProvider;
-    private readonly IChatCompletionService _chatCompletionService = chatCompletionService;
-    private readonly Queue<Choice> _choices = new();
+    private readonly PillsBotOptions _options;
+    private readonly ILogger<AzureOpenAIMessageProvider> _logger;
+    private readonly ConfigurationMessageProvider _configurationMessageProvider;
+    private readonly IChatCompletionService _chatCompletionService;
     private readonly Random _random = new();
-    private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
-        .AddRetry(new RetryStrategyOptions
-        {
-            DelayGenerator = static args =>
+    private readonly ResiliencePipeline _resiliencePipeline;
+    private readonly IMessagesRepository _repository;
+    private readonly IReadOnlyDictionary<string, string> _languages;
+
+    public AzureOpenAIMessageProvider(IOptions<PillsBotOptions> options,
+        ILogger<AzureOpenAIMessageProvider> logger,
+        ConfigurationMessageProvider configurationMessageProvider,
+        IChatCompletionService chatCompletionService,
+        IMessagesRepository repository)
+    {
+        _options = options.Value;
+        _logger = logger;
+        _configurationMessageProvider = configurationMessageProvider;
+        _chatCompletionService = chatCompletionService;
+        _resiliencePipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
             {
-                TimeSpan delay = args.AttemptNumber switch
+                DelayGenerator = static args =>
                 {
-                    0 => TimeSpan.Zero,
-                    1 => TimeSpan.FromSeconds(1),
-                    _ => TimeSpan.FromMinutes(1)
-                };
+                    TimeSpan delay = args.AttemptNumber switch
+                    {
+                        0 => TimeSpan.Zero,
+                        1 => TimeSpan.FromSeconds(1),
+                        _ => TimeSpan.FromMinutes(1)
+                    };
 
-                return new ValueTask<TimeSpan?>(delay);
-            },
-            OnRetry = args =>
-            {
-                logger.LogWarning("OnRetry, Attempt: {AttemptNumber}", args.AttemptNumber);
+                    return new ValueTask<TimeSpan?>(delay);
+                },
+                OnRetry = args =>
+                {
+                    logger.LogWarning("OnRetry, Attempt: {AttemptNumber}", args.AttemptNumber);
 
-                return default;
-            }
-        })
-        .Build();
+                    return default;
+                }
+            })
+            .Build();
 
+        _repository = repository;
+
+        _languages = options.Value.AI.Languages
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(input => (code: input, name: GetLanguageName(input)))
+            .Where(pair => pair.name is not null)
+            .ToDictionary(pair => pair.code, pair => pair.name!)
+            .AsReadOnly();
+    }
 
     private OpenAIPromptExecutionSettings ExecutionSettings => new()
     {
@@ -68,52 +90,90 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
         MaxTokens = _options.AI.MaxTokens
     };
 
-    private string Prompt => $"""
-        Generate {_options.AI.ChoicesCount} unique chat messages, each in one of these languages: {_options.AI.Languages}.
+    private string GetPrompt(string language)
+    {
+        return $$"""
+        Generate {{_options.AI.ChoicesCount}} unique chat messages in this language: {{language}}.
 
         # Pet
 
-        Names: {_options.AI.PetNames}.
-        Gender: {_options.AI.PetGender}.
+        Names: {{_options.AI.PetNames}}.
+        Gender: {{_options.AI.PetGender}}.
 
         # Output format
         
         JSON array. Field `r` for the reminder, `b` for the button, and `a` for the appreciation message. Return the raw JSON, without enclosing quotes.
         Always make sure the name is in the correct case, gender, and transliteration.
         """;
+    }
 
     public async Task<(string reminder, string button, string appreciation)> GetMessage(CancellationToken cancellationToken = default)
     {
-        if (_choices.TryDequeue(out Choice? result))
+        // picking a language at random
+        (string languageCode, string language) = _languages.ElementAt(_random.Next(_languages.Count));
+        _logger.LogInformation("Picking language at random: {LanguageCode}, {Language}.", languageCode, language);
+
+        // checking messages in the repository
+        (string reminder, string acknowledgement, string appreciation)[] messages =
+            await _repository.GetMessages(languageCode, cancellationToken);
+        _logger.LogInformation("Number of messages in the repo with language code {LanguageCode}: {MessagesCount}.",
+            languageCode, messages.Length);
+
+        // filling the repository if empty
+        if (messages.Length == 0)
         {
-            return (result.Reminder, result.Button, result.Appreciation);
+            _logger.LogInformation("No messages found for language {Language}, will ask AI to generate.", language);
+
+            IEnumerable<Choice> choices;
+            try
+            {
+                // get choices from the AI
+                choices = await _resiliencePipeline.ExecuteAsync(token => GetNewChoices(language, token), cancellationToken);
+
+                // store in the repository
+                messages = choices.Select(choice => (choice.Reminder, choice.Button, choice.Appreciation)).ToArray();
+                await _repository.AddMessages(languageCode, messages, cancellationToken);
+                _logger.LogInformation("Saved {MessagesCount} messages with language code {LanguageCode} to the repository.",
+                    messages.Length, languageCode);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error updating messages from AI. Defaulting to the message in configuration.");
+
+                return await _configurationMessageProvider.GetMessage(cancellationToken);
+            }
         }
 
+        // pick a random message
+        (string reminder, string acknowledgement, string appreciation) message = messages[_random.Next(messages.Length)];
+        _logger.LogInformation("Picking message at random: {@Message}", message);
+
+        return message;
+    }
+
+    private string? GetLanguageName(string input)
+    {
         try
         {
-            foreach (Choice choice in await _resiliencePipeline.ExecuteAsync(GetNewChoices, cancellationToken))
-            {
-                _choices.Enqueue(choice);
-            }
-
-            result = _choices.Dequeue();
-            return (result.Reminder, result.Button, result.Appreciation);
+            var culture = CultureInfo.GetCultureInfo(input, true);
+            return culture.DisplayName;
         }
-        catch (Exception exception)
+        catch (CultureNotFoundException exception)
         {
-            _logger.LogError(exception, "Error getting new messages from AI. Defaulting to the message in configuration.");
-
-            return await _configurationMessageProvider.GetMessage(cancellationToken);
+            _logger.LogWarning(exception, "Failed to find culture info for input: {Input}.", input);
+            return default;
         }
     }
 
-    private async ValueTask<IEnumerable<Choice>> GetNewChoices(CancellationToken cancellationToken)
+    private async ValueTask<IEnumerable<Choice>> GetNewChoices(string language, CancellationToken cancellationToken)
     {
+        string prompt = GetPrompt(language);
+
         ChatMessageContent content;
         try
         {
             content = await _chatCompletionService
-                .GetChatMessageContentAsync(Prompt, ExecutionSettings, cancellationToken: cancellationToken);
+                .GetChatMessageContentAsync(prompt, ExecutionSettings, cancellationToken: cancellationToken);
         }
         catch (Exception exception)
         {
@@ -124,8 +184,6 @@ internal sealed class AzureOpenAIMessageProvider(IOptions<PillsBotOptions> optio
         string json = content.ToString();
         Choice[] choices = JsonSerializer.Deserialize<Choice[]>(json, JsonSerializerOptions)
             ?? throw new InvalidOperationException("Failed to deserialize choices as JSON.");
-
-        _random.Shuffle(choices);
 
         return choices;
     }

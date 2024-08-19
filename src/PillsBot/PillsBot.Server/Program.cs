@@ -36,7 +36,7 @@ namespace PillsBot.Server
             .CreateDefaultBuilder(args)
             .ConfigureServices((context, services) => services
                 .AddApplicationInsightsTelemetryWorkerService(context.Configuration)
-                .AddPillsBot(context.Configuration.GetSection("PillsBot")))
+                .AddPillsBot(context.Configuration))
             .UseSerilog((context, services, configuration) => configuration
                 .MinimumLevel.Is(context.HostingEnvironment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Information)
                 .MinimumLevel.Override("Microsoft.SemanticKernel", (LogEventLevel)services.GetRequiredService<IOptions<PillsBotOptions>>().Value.AI.LogLevel)

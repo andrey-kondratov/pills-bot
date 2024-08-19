@@ -1,0 +1,34 @@
+services:
+  server:
+    image: ghcr.io/andrey-kondratov/pills-bot
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    env_file: ./server.env
+    restart: unless-stopped
+  
+  db-init:
+    image: ghcr.io/andrey-kondratov/pills-bot
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ./server.env
+    entrypoint: /app/migrate
+    
+  db:
+    image: postgres:16.4-bookworm
+    env_file: ./server.env
+    healthcheck:
+      test: ['CMD-SHELL', 'psql -h localhost -U $${POSTGRES_USER} -c SELECT 1 -d $${POSTGRES_DB}']
+      interval: 1m
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:

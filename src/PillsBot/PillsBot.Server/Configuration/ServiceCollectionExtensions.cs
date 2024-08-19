@@ -1,44 +1,53 @@
 ﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using PillsBot.Server.Chat;
+using PillsBot.Server.Persistence;
 using PillsBot.Server.TextGeneration;
 
 namespace PillsBot.Server.Configuration
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddPillsBot(this IServiceCollection services, IConfigurationSection configuration)
+        public static IServiceCollection AddPillsBot(this IServiceCollection services, IConfiguration configuration)
         {
+            IConfigurationSection configurationSection = configuration.GetSection("PillsBot");
+            PillsBotOptions options = new();
+            configurationSection.Bind(options);
+
             services
                 .AddOptions()
-                .Configure<PillsBotOptions>(configuration);
+                .Configure<PillsBotOptions>(configurationSection);
 
             services
                 .AddTransient<IChatClient, TelegramChatClient>()
                 .AddHostedService<BotService>();
 
-            AIOptions aiOptions = new();
-            configuration.GetSection("AI").Bind(aiOptions);
-
-            if (!aiOptions.Enabled)
+            if (!options.AI.Enabled)
             {
                 services.AddTransient<IMessageProvider, ConfigurationMessageProvider>();
 
                 return services;
             }
 
-            if (aiOptions.Azure is null)
+            if (options.AI.Azure is null)
             {
                 throw new InvalidOperationException("Missing Azure AI configuration.");
             }
 
             services
                 .AddTransient<ConfigurationMessageProvider>()
-                .AddSingleton<IMessageProvider, AzureOpenAIMessageProvider>()
+                .AddScoped<IMessageProvider, AzureOpenAIMessageProvider>()
                 .AddKernel()
-                .AddAzureOpenAIChatCompletion(aiOptions.Azure.DeploymentName, aiOptions.Azure.Endpoint, aiOptions.Azure.Key);
+                .AddAzureOpenAIChatCompletion(options.AI.Azure.DeploymentName, options.AI.Azure.Endpoint, options.AI.Azure.Key);
+
+            services
+                .AddDbContext<PillsBotDbContext>(options => options
+                    .UseNpgsql(configuration.GetConnectionString("PillsBotDbContext"))
+                    .UseSnakeCaseNamingConvention())
+                .AddScoped<IMessagesRepository, MessagesRepository>();
 
             return services;
         }
