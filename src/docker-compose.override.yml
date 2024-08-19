@@ -27,7 +27,6 @@ services:
       POSTGRES_PASSWORD: heroics
   
   adminer:
-    container_name: pills-bot-adminer
     image: adminer
     ports:
       - 8080:8080
