@@ -9,7 +9,7 @@ COPY . .
 
 WORKDIR /src/PillsBot/PillsBot.Server
 RUN dotnet publish -r linux-arm64 -c Release -o /app --self-contained
-RUN dotnet ef migrations bundle -c PillsBotDbContext -r linux-x64 --configuration Release -o /app/migrate --self-contained
+RUN dotnet ef migrations bundle -c PillsBotDbContext -r linux-arm64 --configuration Release -o /app/migrate --self-contained
 
 FROM base AS final
 WORKDIR /app

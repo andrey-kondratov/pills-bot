@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  out_dir: ~/pills-bot/prod
+  out_dir: ${{ vars.OUTPUT_DIR }}
 
 jobs:
   deploy:
