@@ -24,6 +24,8 @@ jobs:
       - name: Push
         run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${tag}
   deploy:
+    needs:
+      - build
     runs-on: [host, ARM64]
     environment: test
     steps:
