@@ -21,7 +21,7 @@ services:
     image: postgres:16.4-bookworm
     env_file: ./server.env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-q", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready", "-q", "-d", "$$POSTGRES_DB", "-U", "$$POSTGRES_USER"]
       interval: 1m
       timeout: 5s
       retries: 10
