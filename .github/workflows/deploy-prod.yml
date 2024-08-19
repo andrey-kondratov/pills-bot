@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy (Prod)
 
 on:
   workflow_dispatch:
@@ -30,6 +30,7 @@ jobs:
           EOF
 
           cat << EOF > server.env
+          DOTNET_ENVIRONMENT: Development
           PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
           PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
           PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
