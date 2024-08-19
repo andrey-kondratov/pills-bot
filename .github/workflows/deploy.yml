@@ -5,6 +5,7 @@ on:
 
 env:
   out_dir: ${{ vars.OUTPUT_DIR }}
+  tag: ${{ github.ref == format('refs/heads/{0}', 'master') && 'latest' || format('pr-{0}', github.event.pull_request.number) }}-arm64v8
 
 jobs:
   deploy:
@@ -23,9 +24,9 @@ jobs:
           cat << EOF > docker-compose.override.yml
           services:
             server:
-              image: ghcr.io/${{ github.repository }}:latest-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
             db-init:
-              image: ghcr.io/${{ github.repository }}:latest-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
           EOF
 
           cat << EOF > server.env
