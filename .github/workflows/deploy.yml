@@ -5,7 +5,7 @@ on:
 
 env:
   out_dir: ${{ vars.OUTPUT_DIR }}
-  tag: ${{ github.ref == format('refs/heads/{0}', 'master') && 'latest' || format('pr-{0}', github.event.pull_request.number) }}-arm64v8
+  tag: pr-14-arm64v8
 
 jobs:
   deploy:
