@@ -48,12 +48,15 @@ jobs:
           EOF
 
           cat << EOF > server.env
+          DOTNET_ENVIRONMENT: Development
           PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
           PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
           PILLSBOT__REMINDER__INTERVAL: ${{ vars.PILLSBOT__REMINDER__INTERVAL }}
+          PILLSBOT__AI__ENABLED: ${{ vars.PILLSBOT__AI__ENABLED }}
           PILLSBOT__AI__LANGUAGES: ${{ secrets.PILLSBOT__AI__LANGUAGES }}
           PILLSBOT__AI__PETNAMES: ${{ secrets.PILLSBOT__AI__PETNAMES }}
           PILLSBOT__AI__PETGENDER: ${{ secrets.PILLSBOT__AI__PETGENDER }}
+          PILLSBOT__AI__LOGLEVEL: ${{ vars.PILLSBOT__AI__LOGLEVEL }}
           PILLSBOT__AI__MAXTOKENS: ${{ vars.PILLSBOT__AI__MAXTOKENS }}
           PILLSBOT__AI__AZURE__ENDPOINT: ${{ secrets.PILLSBOT__AI__AZURE__ENDPOINT }}
           PILLSBOT__AI__AZURE__KEY: ${{ secrets.PILLSBOT__AI__AZURE__KEY }}
@@ -69,6 +72,7 @@ jobs:
           cd $out_dir
           docker compose up --detach --pull always --quiet-pull --remove-orphans --wait --wait-timeout 60
   deploy-prod:
+    if: ${{ github.ref == format('refs/heads/{0}', 'master') }}
     needs:
       - build
       - deploy-test
@@ -93,7 +97,7 @@ jobs:
           EOF
 
           cat << EOF > server.env
-          DOTNET_ENVIRONMENT: Development
+          DOTNET_ENVIRONMENT: Production
           PILLSBOT__TELEGRAM__APITOKEN: ${{ secrets.PILLSBOT__TELEGRAM__APITOKEN }}
           PILLSBOT__TELEGRAM__CHATID: "${{ secrets.PILLSBOT__TELEGRAM__CHATID }}"
           PILLSBOT__REMINDER__BEGINS: ${{ secrets.PILLSBOT__REMINDER__BEGINS }}
