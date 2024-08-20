@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "github.vscode-github-actions"
+        "cake-build.cake-vscode",
+        "editorconfig.editorconfig"
     ]
 }
