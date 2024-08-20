@@ -23,7 +23,7 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore
       - name: Push
-        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${tag}
+        run: echo "${{ github.token }}" | dotnet cake --tag ${tag}
   deploy-test:
     needs:
       - build
