@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/runtime-deps:8.0-bookworm-slim AS base
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-bookworm-slim AS base
 
 LABEL org.opencontainers.image.source=https://github.com/andrey-kondratov/pills-bot
 LABEL org.opencontainers.image.description="A Telegram bot to remind about taking pills. (For my cat.)"
