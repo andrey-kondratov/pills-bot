@@ -13,6 +13,7 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 charset = utf-8-bom
+dotnet_diagnostic.IDE0130.severity = none
 
 # XML project files
 [*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]

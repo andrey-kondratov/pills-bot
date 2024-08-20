@@ -1,5 +1,6 @@
 {
     "yaml.schemas": {
         "https://json.schemastore.org/github-workflow.json": "file:///home/akondratov/src/pills-bot/.github/workflows/deploy.yml"
-    }
+    },
+    "csharp.preview.improvedLaunchExperience": true
 }
