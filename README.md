@@ -9,9 +9,7 @@ If you have a cat that needs pills given to him on a regular schedule, and you s
 - (optional) an Azure OpenAI `gpt-4o-mini` or similar language model (takes approx. 200 input and 500 output tokens for every 20 reminders, which amounts to 0.011972 EUR per year if reminders are set to be sent twice a day)
 - (optional) a Postgres DB server to store messages from AI
 
-## Configuration
-
-Create a `docker-compose.yml`:
+## Run
 
 ```sh
 docker run ghcr.io/andrey-kondratov/pills-bot \
@@ -27,7 +25,7 @@ docker run ghcr.io/andrey-kondratov/pills-bot \
   -e CONNECTIONSTRINGS__PILLSBOTDBCONTEXT: <YOUR_POSTGRES_DB_CONNECTION>
 ```
 
-If you prefer not to use Azure OpenAI and simply send a static message:
+If you prefer not to use Azure OpenAI and send a static message:
 
 ```sh
 docker run ghcr.io/andrey-kondratov/pills-bot \
