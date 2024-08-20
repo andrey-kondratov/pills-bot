@@ -1,7 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
-using PillsBot.Server.Configuration;
 
 namespace PillsBot.Server.TextGeneration;
 

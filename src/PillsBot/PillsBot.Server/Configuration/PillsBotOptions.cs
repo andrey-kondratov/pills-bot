@@ -1,9 +1,8 @@
-﻿namespace PillsBot.Server.Configuration
+﻿namespace PillsBot.Server;
+
+public class PillsBotOptions
 {
-    public class PillsBotOptions
-    {
-        public TelegramOptions? Telegram { get; set; }
-        public ReminderOptions Reminder { get; set; } = new();
-        public AIOptions AI { get; set; } = new();
-    }
+    public TelegramOptions? Telegram { get; set; }
+    public ReminderOptions Reminder { get; set; } = new();
+    public AIOptions AI { get; set; } = new();
 }

@@ -4,120 +4,118 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using PillsBot.Server.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace PillsBot.Server.Chat
+namespace PillsBot.Server;
+
+internal class TelegramChatClient(ILogger<TelegramChatClient> logger, IOptions<PillsBotOptions> options)
+    : IChatClient, IUpdateHandler
 {
-    internal class TelegramChatClient(ILogger<TelegramChatClient> logger, IOptions<PillsBotOptions> options)
-        : IChatClient, IUpdateHandler
+    private static readonly ReceiverOptions ReceiverOptions = new()
     {
-        private static readonly ReceiverOptions ReceiverOptions = new()
+        AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
+    };
+
+    private readonly ILogger<TelegramChatClient> _logger = logger;
+    private readonly PillsBotOptions _options = options.Value;
+    private readonly TelegramBotClient _client = new(options.Value.Telegram?.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
+
+    public async Task Start(CancellationToken cancellationToken = default)
+    {
+        bool valid = await _client.TestApiAsync(cancellationToken);
+        if (!valid)
         {
-            AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
+            throw new InvalidOperationException("Telegram token validation failed.");
+        }
+
+        // webhooks not supported
+        WebhookInfo webhookInfo = await _client.GetWebhookInfoAsync(cancellationToken);
+        if (!string.IsNullOrEmpty(webhookInfo.Url))
+        {
+            _logger.LogWarning("A webhook is set up on the server. Deleting...");
+            await _client.DeleteWebhookAsync(true, cancellationToken);
+        }
+
+        _client.StartReceiving(this, ReceiverOptions, cancellationToken);
+        _logger.LogInformation("Started receiving updates.");
+    }
+
+    public async Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default)
+    {
+        ChatId chatId = _options.Telegram?.ChatId ??
+            throw new InvalidOperationException("Chat id not configured");
+
+        IReplyMarkup replyMarkup = GetReplyMarkup(button, appreciation);
+
+        _logger.LogInformation("Sending message: {Message} to chat {ChatId}", reminder, chatId);
+        await _client.SendTextMessageAsync(chatId, reminder, replyMarkup: replyMarkup,
+            cancellationToken: cancellationToken);
+
+        _logger.LogInformation("Message sent.");
+    }
+
+    public Task HandleUpdateAsync(ITelegramBotClient botClient, Update update,
+        CancellationToken cancellationToken)
+    {
+        return update.Type switch
+        {
+            UpdateType.CallbackQuery => OnCallbackQuery(update.CallbackQuery, cancellationToken),
+            UpdateType.Message => OnClientMessage(update.Message),
+            _ => throw new InvalidEnumArgumentException("UpdateType", (int)update.Type, typeof(UpdateType))
         };
+    }
 
-        private readonly ILogger<TelegramChatClient> _logger = logger;
-        private readonly PillsBotOptions _options = options.Value;
-        private readonly TelegramBotClient _client = new(options.Value.Telegram?.ApiToken ?? throw new InvalidOperationException("Missing Telegram API token."));
+    public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogError(exception, "Polling error.");
+        return Task.CompletedTask;
+    }
 
-        public async Task Start(CancellationToken cancellationToken = default)
+    private async Task OnCallbackQuery(CallbackQuery? query, CancellationToken cancellationToken)
+    {
+        _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
+
+        if (query?.Message is null)
         {
-            bool valid = await _client.TestApiAsync(cancellationToken);
-            if (!valid)
-            {
-                throw new InvalidOperationException("Telegram token validation failed.");
-            }
-
-            // webhooks not supported
-            WebhookInfo webhookInfo = await _client.GetWebhookInfoAsync(cancellationToken);
-            if (!string.IsNullOrEmpty(webhookInfo.Url))
-            {
-                _logger.LogWarning("A webhook is set up on the server. Deleting...");
-                await _client.DeleteWebhookAsync(true, cancellationToken);
-            }
-
-            _client.StartReceiving(this, ReceiverOptions, cancellationToken);
-            _logger.LogInformation("Started receiving updates.");
+            _logger.LogWarning("Callback query message was empty. Enable trace log level to see the details.");
+            return;
         }
 
-        public async Task Notify(string reminder, string button, string appreciation, CancellationToken cancellationToken = default)
+        long chatId = query.Message.Chat.Id;
+        if (chatId != _options.Telegram!.ChatId)
         {
-            ChatId chatId = _options.Telegram?.ChatId ??
-                throw new InvalidOperationException("Chat id not configured");
-
-            IReplyMarkup replyMarkup = GetReplyMarkup(button, appreciation);
-
-            _logger.LogInformation("Sending message: {Message} to chat {ChatId}", reminder, chatId);
-            await _client.SendTextMessageAsync(chatId, reminder, replyMarkup: replyMarkup,
-                cancellationToken: cancellationToken);
-
-            _logger.LogInformation("Message sent.");
+            _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", query);
+            return;
         }
 
-        public Task HandleUpdateAsync(ITelegramBotClient botClient, Update update,
-            CancellationToken cancellationToken)
+        // fire message removal
+        await _client.DeleteMessageAsync(chatId, query.Message.MessageId, cancellationToken);
+
+        // fire callback
+        await _client.AnswerCallbackQueryAsync(query.Id, query.Data, cancellationToken: cancellationToken);
+    }
+
+    private Task OnClientMessage(Message? message)
+    {
+        _logger.LogInformation("A message received: {@Message}", message);
+        return Task.CompletedTask;
+    }
+
+    private InlineKeyboardMarkup GetReplyMarkup(string button, string appreciation)
+    {
+        if (appreciation.Length > 64)
         {
-            return update.Type switch
-            {
-                UpdateType.CallbackQuery => OnCallbackQuery(update.CallbackQuery, cancellationToken),
-                UpdateType.Message => OnClientMessage(update.Message),
-                _ => throw new InvalidEnumArgumentException("UpdateType", (int)update.Type, typeof(UpdateType))
-            };
+            _logger.LogWarning("Appreciation message \"{Appreciation}\" length is greater than 64. Will truncate.", appreciation);
+            appreciation = appreciation[..64];
         }
 
-        public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
-            CancellationToken cancellationToken)
-        {
-            _logger.LogError(exception, "Polling error.");
-            return Task.CompletedTask;
-        }
-
-        private async Task OnCallbackQuery(CallbackQuery? query, CancellationToken cancellationToken)
-        {
-            _logger.LogTrace("A callback query received: {@CallbackQuery}", query);
-
-            if (query?.Message is null)
-            {
-                _logger.LogWarning("Callback query message was empty. Enable trace log level to see the details.");
-                return;
-            }
-
-            long chatId = query.Message.Chat.Id;
-            if (chatId != _options.Telegram!.ChatId)
-            {
-                _logger.LogWarning("Unexpected chat id in callback query: {@CallbackQuery}", query);
-                return;
-            }
-
-            // fire message removal
-            await _client.DeleteMessageAsync(chatId, query.Message.MessageId, cancellationToken);
-
-            // fire callback
-            await _client.AnswerCallbackQueryAsync(query.Id, query.Data, cancellationToken: cancellationToken);
-        }
-
-        private Task OnClientMessage(Message? message)
-        {
-            _logger.LogInformation("A message received: {@Message}", message);
-            return Task.CompletedTask;
-        }
-
-        private InlineKeyboardMarkup GetReplyMarkup(string button, string appreciation)
-        {
-            if (appreciation.Length > 64)
-            {
-                _logger.LogWarning("Appreciation message \"{Appreciation}\" length is greater than 64. Will truncate.", appreciation);
-                appreciation = appreciation[..64];
-            }
-
-            var inlineKeyboardButton = InlineKeyboardButton.WithCallbackData(button, appreciation);
-            var result = new InlineKeyboardMarkup(inlineKeyboardButton);
-            return result;
-        }
+        var inlineKeyboardButton = InlineKeyboardButton.WithCallbackData(button, appreciation);
+        var result = new InlineKeyboardMarkup(inlineKeyboardButton);
+        return result;
     }
 }

@@ -5,78 +5,74 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using PillsBot.Server.Chat;
-using PillsBot.Server.Configuration;
 using PillsBot.Server.TextGeneration;
 
-namespace PillsBot.Server
+namespace PillsBot.Server;
+
+internal class BotService(ILogger<BotService> logger, IChatClient chatClient,
+    IOptions<PillsBotOptions> options, IServiceProvider serviceProvider) : BackgroundService
 {
-    internal class BotService(ILogger<BotService> logger, IChatClient chatClient,
-        IOptions<PillsBotOptions> options, IServiceProvider serviceProvider)
-        : BackgroundService
+    private readonly ILogger<BotService> _logger = logger;
+    private readonly IChatClient _chatClient = chatClient;
+    private readonly PillsBotOptions _options = options.Value;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        private readonly ILogger<BotService> _logger = logger;
-        private readonly IChatClient _chatClient = chatClient;
-        private readonly PillsBotOptions _options = options.Value;
-        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        _logger.LogInformation("Starting bot version {Version}.", typeof(BotService).GetAssemblyVersionString());
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        try
         {
-            _logger.LogInformation("Starting bot...");
-
-            try
-            {
-                await _chatClient.Start(stoppingToken);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Failed to start the chat client.");
-                return;
-            }
-
-            _logger.LogInformation("Bot started.");
-
-            DateTime begins = _options.Reminder.Begins;
-            TimeSpan interval = _options.Reminder.Interval;
-
-            DateTime next = GetNext(begins, interval);
-            _logger.LogInformation("Next reminder comes off at {Next}", next);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                if (next <= DateTime.Now)
-                {
-                    await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
-
-                    IMessageProvider messageProvider = scope.ServiceProvider.GetRequiredService<IMessageProvider>();
-                    (string reminder, string button, string appreciation) = await messageProvider.GetMessage(stoppingToken);
-                    await _chatClient.Notify(reminder, button, appreciation, stoppingToken);
-
-                    next = GetNext(begins, interval);
-                    _logger.LogInformation("Next reminder comes off at {Next}", next);
-                }
-
-                await Task.Delay(1000, stoppingToken);
-            }
-
-            _logger.LogInformation("Bot stopped.");
+            await _chatClient.Start(stoppingToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to start the chat client.");
+            return;
         }
 
-        private static DateTime GetNext(DateTime begins, TimeSpan interval)
+        _logger.LogInformation("Bot started.");
+
+        DateTime begins = _options.Reminder.Begins;
+        TimeSpan interval = _options.Reminder.Interval;
+
+        DateTime next = GetNext(begins, interval);
+        _logger.LogInformation("Next reminder comes off at {Next}", next);
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            DateTime now = DateTime.Now;
-            if (now < begins)
+            if (next <= DateTime.Now)
             {
-                return begins;
+                await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+
+                IMessageProvider messageProvider = scope.ServiceProvider.GetRequiredService<IMessageProvider>();
+                (string reminder, string button, string appreciation) = await messageProvider.GetMessage(stoppingToken);
+                await _chatClient.Notify(reminder, button, appreciation, stoppingToken);
+
+                next = GetNext(begins, interval);
+                _logger.LogInformation("Next reminder comes off at {Next}", next);
             }
 
-            DateTime current = begins;
-            while (current < now)
-            {
-                current = current.Add(interval);
-            }
-
-            return current;
+            await Task.Delay(1000, stoppingToken);
         }
+
+        _logger.LogInformation("Bot stopped.");
+    }
+
+    private static DateTime GetNext(DateTime begins, TimeSpan interval)
+    {
+        DateTime now = DateTime.Now;
+        if (now < begins)
+        {
+            return begins;
+        }
+
+        DateTime current = begins;
+        while (current < now)
+        {
+            current = current.Add(interval);
+        }
+
+        return current;
     }
 }
