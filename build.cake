@@ -12,7 +12,8 @@ Task("build-and-push")
     .Does(() => DockerBuildXBuild(new() { 
         Tag = [$"{server}/{registry}/{image}:{tag}"],
         Platform = ["linux/amd64", "linux/arm64"],
-        Progress = "plain"
+        Progress = "plain",
+        Push = true
     }, "./src/PillsBot"));
 
 Task("login")
