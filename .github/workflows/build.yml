@@ -2,10 +2,10 @@ name: Build and deploy
 
 on:
   pull_request:
-    branches: 
+    branches:
       - master
   push:
-    branches: 
+    branches:
       - master
   workflow_dispatch:
 
@@ -42,7 +42,7 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
+
           cat << EOF > docker-compose.override.yml
           services:
             server:
@@ -92,7 +92,7 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
+
           cat << EOF > docker-compose.override.yml
           services:
             server:
