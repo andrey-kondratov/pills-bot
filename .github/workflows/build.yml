@@ -2,10 +2,10 @@ name: Build and deploy
 
 on:
   pull_request:
-    branches: 
+    branches:
       - master
   push:
-    branches: 
+    branches:
       - master
   workflow_dispatch:
 
@@ -22,8 +22,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Restore tools
         run: dotnet tool restore
-      - name: Push
-        run: echo "${{ github.token }}" | dotnet cake --target Push --tag ${tag}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        run: echo "${{ github.token }}" | dotnet cake --tag ${tag} --progress plain --push true
   deploy-test:
     needs:
       - build
@@ -38,13 +42,13 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
+
           cat << EOF > docker-compose.override.yml
           services:
             server:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
             db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
           EOF
 
           cat << EOF > server.env
@@ -88,13 +92,13 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
+
           cat << EOF > docker-compose.override.yml
           services:
             server:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
             db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
+              image: ghcr.io/${{ github.repository }}:${tag}
           EOF
 
           cat << EOF > server.env
