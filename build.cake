@@ -11,7 +11,7 @@ var progress = Argument("progress", "auto");
 var platform = Argument("platform", "linux/amd64,linux/arm64").Split(',');
 
 Task("build-and-push")
-    // .IsDependentOn("login")
+    .IsDependentOn("login")
     .Does(() => DockerBuildXBuild(new() { 
         Tag = [$"{server}/{registry}/{image}:{tag}"],
         Platform = platform,
