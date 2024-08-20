@@ -27,7 +27,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push
-        run: echo "${{ github.token }}" | dotnet cake --tag ${tag}
+        run: echo "${{ github.token }}" | dotnet cake --tag ${tag} --progress plain --push true
   deploy-test:
     needs:
       - build

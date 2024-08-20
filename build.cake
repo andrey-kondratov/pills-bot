@@ -6,14 +6,17 @@ var image = Argument("image", "pills-bot");
 var tag = Argument("tag", "latest");
 var username = Argument("username", "andrey-kondratov");
 var server = Argument("server", "ghcr.io");
+var push = Argument("push", false);
+var progress = Argument("progress", "auto");
+var platform = Argument("platform", "linux/amd64,linux/arm64").Split(',');
 
 Task("build-and-push")
-    .IsDependentOn("login")
+    // .IsDependentOn("login")
     .Does(() => DockerBuildXBuild(new() { 
         Tag = [$"{server}/{registry}/{image}:{tag}"],
-        Platform = ["linux/amd64", "linux/arm64"],
-        Progress = "plain",
-        Push = true
+        Platform = platform,
+        Progress = progress,
+        Push = push
     }, "./src/PillsBot"));
 
 Task("login")
