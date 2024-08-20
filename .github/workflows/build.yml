@@ -38,14 +38,6 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
-          cat << EOF > docker-compose.override.yml
-          services:
-            server:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
-            db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
-          EOF
 
           cat << EOF > server.env
           DOTNET_ENVIRONMENT: Development
@@ -88,14 +80,6 @@ jobs:
 
           cp src/docker-compose.yml $out_dir
           cd $out_dir
-          
-          cat << EOF > docker-compose.override.yml
-          services:
-            server:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
-            db-init:
-              image: ghcr.io/${{ github.repository }}:${tag}-arm64v8
-          EOF
 
           cat << EOF > server.env
           DOTNET_ENVIRONMENT: Production
